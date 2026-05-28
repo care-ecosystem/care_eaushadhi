@@ -33,8 +33,10 @@ tags:
     description: Manage API schema versions and validation rules
   - name: Product Mappings
     description: Manage eAushadi product to Care Product Knowledge mappings
-  - name: Item Consumptions
-    description: Track consumed/imported inward items
+  - name: Item Deliveries
+    description: Track imported inward items (one row per record_item imported into CARE)
+  - name: Record Deliveries
+    description: Link inward records to CARE delivery_orders
   - name: Fetch Inwards
     description: Trigger fetches from eAushadi and inspect synced inward records
 
@@ -66,7 +68,7 @@ paths:
                   facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                   eaushadhi_institute_id: "000931"
                   schema_version: "1.0"
-                  credentials_ref: "vault://eaushadi/facility/3fa85f64"
+                  credentials_ref: "EAUSHADHI_SECRET_KEY_NAME_FORFACILITY1"
                   supplier_mappings:
                     - supplier_id: "b1e7c2a4-9d8f-4e6b-a3c1-7f2d8e5b9c34"
                       eaushadhi_warehouse_name: "Mysuru WH"
@@ -591,23 +593,23 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  # ---------- Item Consumptions ----------
-  /api/care_eaushadi/item-consumptions/:
+  # ---------- Record Item Deliveries ----------
+  /api/care_eaushadi/record-item-deliveries/:
     post:
       tags:
-        - Item Consumptions
-      summary: Create item consumption
+        - Item Deliveries
+      summary: Create a record item delivery
       description: |
         Record that a record_item has been imported into CARE.
         The record_item provides drug/batch/quantity context via FK.
-        UNIQUE(record_item_id) — Phase 1 assumes one consumption per item.
-      operationId: createItemConsumption
+        UNIQUE(record_item_id) — Phase 1 assumes one delivery per item.
+      operationId: createRecordItemDelivery
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ItemConsumptionCreate'
+              $ref: '#/components/schemas/RecordItemDeliveryCreate'
             example:
               record_item_id: "5a8b9c12-3344-4d5e-9f01-abcdef012345"
               facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
@@ -618,39 +620,82 @@ paths:
               quantity_received: 1000
       responses:
         '201':
-          description: Item consumption created
+          description: Record item delivery created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ItemConsumption'
+                $ref: '#/components/schemas/RecordItemDelivery'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          description: Conflict - this record_item has already been consumed
+          description: Conflict - this record_item already has a delivery
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: "An active consumption already exists for this record_item"
+                error: "An active delivery already exists for this record_item"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ---------- Record Deliveries ----------
+  /api/care_eaushadi/record-deliveries/:
+    post:
+      tags:
+        - Record Deliveries
+      summary: Create a record delivery
+      description: |
+        Link an inward_record to a CARE delivery_order. Each delivery_order belongs
+        to exactly one inward_record (UNIQUE on delivery_order_id), but an inward_record
+        may have multiple record_deliveries over time (partial imports, supplier splits).
+      operationId: createRecordDelivery
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDeliveryCreate'
+            example:
+              inward_record_id: "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+              facility_id: "f1a2b3c4-d5e6-7890-abcd-ef1234567890"
+              delivery_order_id: "9c0d11ee-aabb-44cc-aa11-bb22cc33dd44"
+      responses:
+        '201':
+          description: Record delivery created. Returns the created link with its id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordDelivery'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - this delivery_order is already linked to an inward_record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "delivery_order_id is already linked to an inward_record"
         '500':
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- Fetch Inwards ----------
-  /api/care_eaushadi/initiate-stock-fetch/:
+  /api/care_eaushadi/initiate-inward-fetch/:
     post:
       tags:
         - Fetch Inwards
-      summary: Initiate stock fetch from eAushadi API (Async)
+      summary: Initiate inward fetch from eAushadi API (Async)
       description: |
         Initiates an asynchronous fetch of inward stock data from eAushadi for a specific date.
         Triggers a Celery background task that calls eAushadi, validates the response,
         and upserts an inward_record plus its record_items.
 
         Returns 202 immediately with a task_id. Poll `/inward-records/` to see results.
-      operationId: initiateStockFetch
+      operationId: initiateInwardFetch
       requestBody:
         required: true
         content:
@@ -942,7 +987,7 @@ components:
           type: string
           nullable: true
           description: Vault reference for upstream auth credentials
-          example: "vault://eaushadi/facility/3fa85f64"
+          example: "EAUSHADHI_SECRET_KEY_NAME_FORFACILITY1"
         supplier_mappings:
           type: array
           description: |
@@ -991,7 +1036,7 @@ components:
         credentials_ref:
           type: string
           nullable: true
-          example: "vault://eaushadi/facility/3fa85f64"
+          example: "EAUSHADHI_SECRET_KEY_NAME_FORFACILITY1"
         supplier_mappings:
           type: array
           description: All active supplier mappings for this institute mapping
@@ -1238,8 +1283,8 @@ components:
           items:
             $ref: '#/components/schemas/ProductMapping'
 
-    # ===================== Item Consumption =====================
-    ItemConsumptionCreate:
+    # ===================== Record Item Delivery =====================
+    RecordItemDeliveryCreate:
       type: object
       required:
         - record_item_id
@@ -1279,9 +1324,33 @@ components:
           format: decimal
           description: Quantity snapshot at consumption time
 
-    ItemConsumption:
+    RecordItemDeliveryUpdate:
+      type: object
+      description: |
+        Partial update for a record item delivery. All fields optional;
+        only supplied fields are updated. Anchor fields (record_item_id, facility_id,
+        supply_delivery_id, record_delivery_id) cannot be changed.
+      properties:
+        product_id:
+          type: string
+          format: uuid
+          description: FK to matched CARE product
+        product_knowledge_id:
+          type: string
+          format: uuid
+          description: FK to CARE product_knowledge
+        quantity_received:
+          type: number
+          format: decimal
+          description: Updated quantity
+        status:
+          type: string
+          enum: [ACTIVE, REVERSED]
+          description: Set to REVERSED to reverse the delivery
+
+    RecordItemDelivery:
       allOf:
-        - $ref: '#/components/schemas/ItemConsumptionCreate'
+        - $ref: '#/components/schemas/RecordItemDeliveryCreate'
         - type: object
           required:
             - id
@@ -1324,9 +1393,9 @@ components:
               readOnly: true
               example: "2026-05-19 19:29:35.868682+05:30"
 
-    # Trimmed ItemConsumption for embedding in InwardRecordDetail items.
+    # Trimmed RecordItemDelivery for embedding in InwardRecordDetail items.
     # Omits record_item_id (parent context) and facility_id (record context).
-    ItemConsumptionEmbedded:
+    RecordItemDeliveryEmbedded:
       type: object
       required:
         - id
@@ -1395,42 +1464,59 @@ components:
           example: "2026-05-19 19:29:35.868682+05:30"
 
     # ===================== Record Delivery (embedded in InwardRecordDetail) =====================
-    RecordDelivery:
+    RecordDeliveryCreate:
       type: object
-      description: Link between an inward_record and a CARE delivery_order.
+      description: Input for creating a record_delivery link.
       required:
-        - id
+        - inward_record_id
         - delivery_order_id
-        - created_date
-        - modified_date
       properties:
-        id:
+        inward_record_id:
           type: string
           format: uuid
-          readOnly: true
+          description: FK to the inward_record this delivery belongs to
         delivery_order_id:
           type: string
           format: uuid
           description: FK to CARE delivery_order
-        created_by:
-          allOf:
-            - $ref: '#/components/schemas/UserSummary'
-          readOnly: true
-        updated_by:
-          allOf:
-            - $ref: '#/components/schemas/UserSummary'
-          nullable: true
-          readOnly: true
-        created_date:
+        facility_id:
           type: string
-          format: date-time
-          readOnly: true
-          example: "2026-05-19 19:29:35.868682+05:30"
-        modified_date:
-          type: string
-          format: date-time
-          readOnly: true
-          example: "2026-05-19 19:29:35.868682+05:30"
+          format: uuid
+          description: FK to CARE facilityid          
+
+    RecordDelivery:
+      allOf:
+        - $ref: '#/components/schemas/RecordDeliveryCreate'
+        - type: object
+          description: Link between an inward_record and a CARE delivery_order.
+          required:
+            - id
+            - created_date
+            - modified_date
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            created_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              readOnly: true
+            updated_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              readOnly: true
+            created_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+            modified_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
 
     # ===================== Inward Record =====================
     InwardRecord:
@@ -1460,16 +1546,16 @@ components:
         sync_status:
           type: string
           enum: [NEVER_SYNCED, FRESH, STALE, SYNCING, FAILED]
-        initial_fetch_log_id:
+        last_successful_fetch_log_id:
           type: string
           format: uuid
           nullable: true
-          description: FK to the fetch log of the first successful fetch
-        current_fetch_log_id:
+          description: FK to the fetch log of the most recent successful fetch
+        last_attempted_fetch_log_id:
           type: string
           format: uuid
           nullable: true
-          description: FK to the fetch log of the most recent fetch
+          description: FK to the fetch log of the most recent attempt (success or failure)
         items_initial_count:
           type: integer
           description: Number of items seen on the first successful fetch
@@ -1506,9 +1592,9 @@ components:
           properties:
             items:
               type: array
-              description: All record_items belonging to this inward_record, each with its consumption(s)
+              description: All record_items belonging to this inward_record, each with its delivery record(s)
               items:
-                $ref: '#/components/schemas/RecordItemWithConsumptions'
+                $ref: '#/components/schemas/RecordItemWithDeliveries'
             deliveries:
               type: array
               description: All CARE delivery_orders linked to this inward_record
@@ -1587,6 +1673,10 @@ components:
           format: decimal
           description: Unit pack as a numeric value (e.g., for "1x10x10" → 100)
           example: 100
+        unit_pack_raw:
+          type: string
+          description: Raw unit pack string as received from eAushadi
+          example: "1x10x10"
         dose:
           type: string
           description: Dosage form
@@ -1622,21 +1712,22 @@ components:
           readOnly: true
           example: "2026-05-19 19:29:35.868682+05:30"
 
-    # RecordItem with its consumption(s) attached. Used inside InwardRecordDetail.items.
-    RecordItemWithConsumptions:
+    # RecordItem with its delivery record(s) attached. Used inside InwardRecordDetail.items.
+    RecordItemWithDeliveries:
       allOf:
         - $ref: '#/components/schemas/RecordItem'
         - type: object
           required:
-            - consumptions
+            - item_deliveries
           properties:
-            consumptions:
+            item_deliveries:
               type: array
               description: |
-                Consumption records linked to this item. Empty array if not yet imported into CARE.
+                Delivery records linked to this item (i.e., what's been imported into CARE).
+                Empty array if not yet imported.
                 Phase 1 normally has 0 or 1 entries; multiple are possible when item splits are enabled.
               items:
-                $ref: '#/components/schemas/ItemConsumptionEmbedded'
+                $ref: '#/components/schemas/RecordItemDeliveryEmbedded'
 
     # ===================== eAushadi External Response =====================
     EaushadhiInwardItem:
