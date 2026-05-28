@@ -1,0 +1,1767 @@
+openapi: 3.0.3
+info:
+  title: eAushadi Integration Plugin API
+  description: |
+    API specification for the eAushadi Integration Plugin for CARE.
+
+    This plugin allows healthcare facilities to:
+    - Fetch daily inward stock details from the eAushadi API
+    - Import inward stock into CARE
+    - Manage facility-to-institute mappings (and their supplier mappings)
+    - Track API schema versions and validate responses
+    - Maintain audit logs for all fetch and import activities
+
+    **Care Plugin Conventions:**
+    - All `id` fields exposed via API are UUIDs (the table's `external_id`).
+      The internal BigInt PK is never exposed.
+    - All FK fields exposed via API are UUIDs (the referenced record's `external_id`).
+    - `created_by` / `updated_by` are nested user objects, not bare IDs.
+
+  version: 1.0.0
+  contact:
+    name: Jagankumar E
+    email: jagan.kumar@egov.org.in
+
+servers:
+  - url: https://care.ohc.network/
+    description: Dev server
+
+tags:
+  - name: Institute Mappings
+    description: Manage facility to eAushadi institute mappings (with embedded supplier mappings)
+  - name: API Schemas
+    description: Manage API schema versions and validation rules
+  - name: Product Mappings
+    description: Manage eAushadi product to Care Product Knowledge mappings
+  - name: Item Consumptions
+    description: Track consumed/imported inward items
+  - name: Fetch Inwards
+    description: Trigger fetches from eAushadi and inspect synced inward records
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ---------- Institute Mappings ----------
+  /api/care_eaushadi/institute-mappings/:
+    post:
+      tags:
+        - Institute Mappings
+      summary: Create institute mapping
+      description: |
+        Create a mapping between a CARE facility and eAushadi institute, optionally
+        with one or more supplier mappings. A facility can have only one institute
+        mapping (UNIQUE on facility_id).
+      operationId: createInstituteMapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstituteMappingCreate'
+            examples:
+              with_suppliers:
+                summary: Mapping with two suppliers (one default)
+                value:
+                  facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  eaushadhi_institute_id: "000931"
+                  schema_version: "1.0"
+                  credentials_ref: "vault://eaushadi/facility/3fa85f64"
+                  supplier_mappings:
+                    - supplier_id: "b1e7c2a4-9d8f-4e6b-a3c1-7f2d8e5b9c34"
+                      eaushadhi_warehouse_name: "Mysuru WH"
+                      is_default: true
+                    - supplier_id: "c2f8d3b5-ae90-4f7c-b401-8e3c9d6f1b25"
+                      eaushadhi_warehouse_name: "Bangalore WH"
+                      is_default: false
+      responses:
+        '201':
+          description: Institute mapping created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - this facility already has a mapping
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Institute mapping already exists for this facility"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags:
+        - Institute Mappings
+      summary: Search institute mappings
+      operationId: searchInstituteMappings
+      parameters:
+        - name: facility_id
+          in: query
+          description: Filter by facility id
+          schema:
+            type: string
+            format: uuid
+        - name: eaushadhi_institute_id
+          in: query
+          schema:
+            type: string
+        - name: schema_version
+          in: query
+          schema:
+            type: string
+        - name: deleted
+          in: query
+          description: Include deleted mappings (default false)
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: ordering
+          in: query
+          description: Order results by field (prefix with - for descending)
+          schema:
+            type: string
+            example: "-created_date"
+      responses:
+        '200':
+          description: List of institute mappings (each with embedded supplier_mappings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMappingList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/institute-mappings/{id}/:
+    get:
+      tags:
+        - Institute Mappings
+      summary: Get institute mapping
+      operationId: getInstituteMapping
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Institute mapping id (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Institute mapping with embedded supplier_mappings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMapping'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags:
+        - Institute Mappings
+      summary: Update institute mapping core fields
+      description: |
+        Update core institute mapping fields. Does NOT modify supplier_mappings —
+        use `PATCH /institute-mappings/{id}/supplier-mappings/` for that.
+      operationId: updateInstituteMapping
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstituteMappingUpdate'
+      responses:
+        '200':
+          description: Institute mapping updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Institute Mappings
+      summary: Delete institute mapping
+      description: Soft-delete an institute mapping
+      operationId: deleteInstituteMapping
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Institute mapping deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMapping'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/institute-mappings/{id}/supplier-mappings/:
+    patch:
+      tags:
+        - Institute Mappings
+      summary: Replace supplier mappings for an institute mapping
+      description: |
+        Replace the full set of supplier_mappings attached to this institute_mapping.
+        The server reconciles: any existing supplier_mapping not present in the
+        submitted array is soft-deleted; new entries are created; matching entries
+        are updated. At most one supplier_mapping may have `is_default = true`.
+      operationId: replaceInstituteSupplierMappings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Institute mapping id (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - supplier_mappings
+              properties:
+                supplier_mappings:
+                  type: array
+                  description: Complete set of supplier mappings. Replaces existing.
+                  items:
+                    $ref: '#/components/schemas/InstituteSupplierMappingInput'
+            example:
+              supplier_mappings:
+                - supplier_id: "b1e7c2a4-9d8f-4e6b-a3c1-7f2d8e5b9c34"
+                  eaushadhi_warehouse_name: "Mysuru WH"
+                  is_default: true
+                - supplier_id: "c2f8d3b5-ae90-4f7c-b401-8e3c9d6f1b25"
+                  eaushadhi_warehouse_name: "Bangalore WH"
+                  is_default: false
+      responses:
+        '200':
+          description: Supplier mappings replaced. Returns the updated institute mapping.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstituteMapping'
+        '400':
+          description: Invalid input (e.g., more than one is_default = true)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "At most one supplier_mapping may be marked is_default = true"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ---------- API Schemas ----------
+  /api/care_eaushadi/api-schemas/:
+    post:
+      tags:
+        - API Schemas
+      summary: Create API schema
+      description: |
+        Create a new API schema validation rule for a specific HTTP response code.
+        Each record represents ONE response code for an endpoint.
+        UNIQUE(schema_version, endpoint, response_code).
+      operationId: createApiSchema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiSchemaCreate'
+            examples:
+              success_response:
+                summary: Schema for a 200 success response
+                value:
+                  schema_version: "1.0"
+                  endpoint: "/e-services/api/instinward/eGovuser"
+                  response_code: 200
+                  json_schema:
+                    type: "array"
+                    items:
+                      type: "object"
+                      required: ["inwardno", "Drug_id", "Batch_number"]
+                      properties:
+                        inwardno: { type: "string" }
+                        Drug_id: { type: "string" }
+                        Batch_number: { type: "string" }
+      responses:
+        '201':
+          description: API schema created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSchema'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - schema already exists for this (version, endpoint, response_code)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Schema already exists for endpoint '/e-services/api/instinward/eGovuser', version '1.0', response code 200"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags:
+        - API Schemas
+      summary: Search API schemas
+      operationId: searchApiSchemas
+      parameters:
+        - name: schema_version
+          in: query
+          schema:
+            type: string
+        - name: endpoint
+          in: query
+          schema:
+            type: string
+        - name: response_code
+          in: query
+          schema:
+            type: integer
+            example: 200
+        - name: deleted
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            example: "-created_date"
+      responses:
+        '200':
+          description: List of API schemas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSchemaList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/api-schemas/{id}/:
+    get:
+      tags:
+        - API Schemas
+      summary: Get API schema
+      operationId: getApiSchema
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: API schema details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSchema'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ---------- Product Mappings ----------
+  /api/care_eaushadi/product-mappings/:
+    post:
+      tags:
+        - Product Mappings
+      summary: Create product mapping
+      description: |
+        Create a mapping between an eAushadi product and a CARE Product Knowledge entry.
+        Mappings can be facility-specific (set facility_id) or global (omit facility_id).
+        UNIQUE(facility_id, eaushadhi_drug_id).
+      operationId: createProductMapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductMappingCreate'
+            examples:
+              facility_specific:
+                summary: Facility-specific mapping
+                value:
+                  facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  eaushadhi_drug_id: "D00251"
+                  eaushadhi_drug_name: "Ofloxacin Tablet IP 400 mg 1x1"
+                  product_knowledge_id: "7fa85f64-5717-4562-b3fc-2c963f66afa7"
+              global:
+                summary: Global mapping (no facility)
+                value:
+                  facility_id: null
+                  eaushadhi_drug_id: "D00041"
+                  eaushadhi_drug_name: "Diclofenac Gel IP 1% 1x30gm tube"
+                  product_knowledge_id: "8fa85f64-5717-4562-b3fc-2c963f66afa8"
+      responses:
+        '201':
+          description: Product mapping created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductMapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - mapping already exists for this (facility, drug)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Product mapping already exists for this facility and eAushadi drug"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    get:
+      tags:
+        - Product Mappings
+      summary: Search product mappings
+      operationId: searchProductMappings
+      parameters:
+        - name: facility_id
+          in: query
+          description: Filter by facility id. Omit to include global mappings.
+          schema:
+            type: string
+            format: uuid
+        - name: eaushadhi_drug_id
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            example: "-usage_count,-last_used_date"
+      responses:
+        '200':
+          description: List of product mappings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductMappingList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/product-mappings/{id}/:
+    patch:
+      tags:
+        - Product Mappings
+      summary: Update product mapping usage statistics
+      description: |
+        Increment usage_count and update last_used_date.
+        Called automatically when a mapping is used during inward import.
+      operationId: updateProductMappingUsage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductMappingUpdate'
+            example:
+              usage_count: 15
+              last_used_date: "2026-05-22T10:30:00Z"
+      responses:
+        '200':
+          description: Product mapping usage statistics updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductMapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ---------- Item Consumptions ----------
+  /api/care_eaushadi/item-consumptions/:
+    post:
+      tags:
+        - Item Consumptions
+      summary: Create item consumption
+      description: |
+        Record that a record_item has been imported into CARE.
+        The record_item provides drug/batch/quantity context via FK.
+        UNIQUE(record_item_id) — Phase 1 assumes one consumption per item.
+      operationId: createItemConsumption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemConsumptionCreate'
+            example:
+              record_item_id: "5a8b9c12-3344-4d5e-9f01-abcdef012345"
+              facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              supply_delivery_id: "4ef9aa11-2233-44dd-88ee-99ff00112233"
+              record_delivery_id: "11223344-5566-7788-99aa-bbccddeeff00"
+              product_id: "9c0d11ee-aabb-44cc-aa11-bb22cc33dd44"
+              product_knowledge_id: "7fa85f64-5717-4562-b3fc-2c963f66afa7"
+              quantity_received: 1000
+      responses:
+        '201':
+          description: Item consumption created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemConsumption'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflict - this record_item has already been consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "An active consumption already exists for this record_item"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ---------- Fetch Inwards ----------
+  /api/care_eaushadi/initiate-stock-fetch/:
+    post:
+      tags:
+        - Fetch Inwards
+      summary: Initiate stock fetch from eAushadi API (Async)
+      description: |
+        Initiates an asynchronous fetch of inward stock data from eAushadi for a specific date.
+        Triggers a Celery background task that calls eAushadi, validates the response,
+        and upserts an inward_record plus its record_items.
+
+        Returns 202 immediately with a task_id. Poll `/inward-records/` to see results.
+      operationId: initiateStockFetch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - facility_id
+                - inward_date
+              properties:
+                facility_id:
+                  type: string
+                  format: uuid
+                  description: Facility id to fetch inwards for
+                inward_date:
+                  type: string
+                  pattern: '^\d{2}/\d{2}/\d{4}$'
+                  description: Date to fetch inwards for (DD/MM/YYYY)
+                  example: "28/04/2026"
+                triggered_by:
+                  type: string
+                  enum: [USER, CRON, RETRY]
+                  default: USER
+                  description: Why this fetch was triggered. Defaults to USER.
+                force_refresh:
+                  type: boolean
+                  default: false
+                  description: Force refresh even if data was fetched recently
+            example:
+              facility_id: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              inward_date: "28/04/2026"
+              triggered_by: "USER"
+              force_refresh: false
+      responses:
+        '202':
+          description: Fetch initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - task_id
+                  - message
+                properties:
+                  status:
+                    type: string
+                    enum: [processing]
+                  task_id:
+                    type: string
+                    description: Celery task ID to track the operation
+                  message:
+                    type: string
+              example:
+                status: "processing"
+                task_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                message: "Fetch initiated. Poll /inward-records/?facility_id=&inward_date= to see results."
+        '400':
+          description: Bad request - invalid parameters or date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Invalid date format. Expected DD/MM/YYYY"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Institute mapping not found for facility
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "No institute mapping found for facility"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/inward-records/:
+    get:
+      tags:
+        - Fetch Inwards
+      summary: List inward records
+      description: |
+        List per-(facility, date) inward control records. Items and deliveries are
+        NOT embedded here — use `GET /inward-records/{id}/` for the full record.
+      operationId: listInwardRecords
+      parameters:
+        - name: facility_id
+          in: query
+          required: true
+          description: Facility id
+          schema:
+            type: string
+            format: uuid
+        - name: inward_date
+          in: query
+          description: Filter by inward date (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+        - name: sync_status
+          in: query
+          schema:
+            type: string
+            enum: [NEVER_SYNCED, FRESH, STALE, SYNCING, FAILED]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: ordering
+          in: query
+          schema:
+            type: string
+            example: "-inward_date"
+      responses:
+        '200':
+          description: List of inward records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InwardRecordList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/care_eaushadi/inward-records/{id}/:
+    get:
+      tags:
+        - Fetch Inwards
+      summary: Get inward record with items and deliveries
+      description: |
+        Retrieve a single inward record along with all its record_items and
+        record_deliveries embedded.
+      operationId: getInwardRecord
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inward record with embedded items and deliveries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InwardRecordDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+  schemas:
+    # Shared user object used in created_by / updated_by fields
+    UserSummary:
+      type: object
+      required:
+        - id
+        - username
+        - first_name
+        - last_name
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        username:
+          type: string
+          example: "string"
+        first_name:
+          type: string
+          example: "string"
+        last_name:
+          type: string
+          example: "string"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    # ===================== Institute Supplier Mapping (embedded) =====================
+    InstituteSupplierMappingInput:
+      type: object
+      required:
+        - supplier_id
+        - eaushadhi_warehouse_name
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: |
+            Existing supplier_mapping id. Include to update an existing entry on PATCH;
+            omit to create a new entry.
+        supplier_id:
+          type: string
+          format: uuid
+          description: |
+            FK to CARE supplier (emr_organization where org_type = 'product_supplier').
+        eaushadhi_warehouse_name:
+          type: string
+          description: Warehouse name from eAushadi (used to match incoming inwards to this supplier)
+          example: "Mysuru WH"
+        is_default:
+          type: boolean
+          default: false
+          description: |
+            At most one supplier_mapping per institute_mapping may have is_default = true.
+
+    InstituteSupplierMapping:
+      allOf:
+        - $ref: '#/components/schemas/InstituteSupplierMappingInput'
+        - type: object
+          required:
+            - id
+            - is_default
+            - created_date
+            - modified_date
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            created_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              readOnly: true
+            updated_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              readOnly: true
+            created_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+            modified_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+
+    # ===================== Institute Mapping =====================
+    InstituteMappingCreate:
+      type: object
+      required:
+        - facility_id
+        - eaushadhi_institute_id
+        - schema_version
+      properties:
+        facility_id:
+          type: string
+          format: uuid
+          description: CARE facility id reference
+        eaushadhi_institute_id:
+          type: string
+          description: eAushadi institute ID (e.g. "000931")
+          example: "000931"
+        schema_version:
+          type: string
+          description: Which api_schema applies to this facility's responses
+          example: "1.0"
+        credentials_ref:
+          type: string
+          nullable: true
+          description: Vault reference for upstream auth credentials
+          example: "vault://eaushadi/facility/3fa85f64"
+        supplier_mappings:
+          type: array
+          description: |
+            Optional supplier mappings to attach on creation.
+            Manage post-creation via PATCH /institute-mappings/{id}/supplier-mappings/.
+          items:
+            $ref: '#/components/schemas/InstituteSupplierMappingInput'
+
+    InstituteMappingUpdate:
+      type: object
+      description: |
+        All fields optional; only supplied fields are updated.
+        Does NOT modify supplier_mappings — use the dedicated endpoint for that.
+      properties:
+        schema_version:
+          type: string
+        credentials_ref:
+          type: string
+          nullable: true
+
+    InstituteMapping:
+      type: object
+      required:
+        - id
+        - facility_id
+        - eaushadhi_institute_id
+        - schema_version
+        - supplier_mappings
+        - created_by
+        - created_date
+        - modified_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        facility_id:
+          type: string
+          format: uuid
+        eaushadhi_institute_id:
+          type: string
+          example: "000931"
+        schema_version:
+          type: string
+          example: "1.0"
+        credentials_ref:
+          type: string
+          nullable: true
+          example: "vault://eaushadi/facility/3fa85f64"
+        supplier_mappings:
+          type: array
+          description: All active supplier mappings for this institute mapping
+          items:
+            $ref: '#/components/schemas/InstituteSupplierMapping'
+        created_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          readOnly: true
+        updated_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          nullable: true
+          readOnly: true
+        created_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+        modified_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+
+    InstituteMappingList:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstituteMapping'
+
+    # ===================== API Schema =====================
+    ApiSchemaCreate:
+      type: object
+      required:
+        - schema_version
+        - endpoint
+        - response_code
+        - json_schema
+      properties:
+        schema_version:
+          type: string
+          example: "1.0"
+        endpoint:
+          type: string
+          example: "/e-services/api/instinward/eGovuser"
+        response_code:
+          type: integer
+          example: 200
+        json_schema:
+          type: object
+          description: JSON Schema (Draft 7) definition for validating this response code
+          example:
+            type: "array"
+            items:
+              type: "object"
+              required: ["inwardno", "Drug_id", "Batch_number"]
+              properties:
+                inwardno: { type: "string" }
+                Drug_id: { type: "string" }
+                Batch_number: { type: "string" }
+
+    ApiSchema:
+      allOf:
+        - $ref: '#/components/schemas/ApiSchemaCreate'
+        - type: object
+          required:
+            - id
+            - deleted
+            - created_by
+            - created_date
+            - modified_date
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            deleted:
+              type: boolean
+              default: false
+              readOnly: true
+            created_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              readOnly: true
+            updated_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              readOnly: true
+            created_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+            modified_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+
+    ApiSchemaList:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiSchema'
+
+    # ===================== Product Mapping =====================
+    ProductMappingCreate:
+      type: object
+      required:
+        - eaushadhi_drug_id
+        - eaushadhi_drug_name
+        - product_knowledge_id
+      properties:
+        facility_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Facility id reference. Optional — facility-specific mapping when set,
+            global mapping when null.
+        eaushadhi_drug_id:
+          type: string
+          example: "D00251"
+        eaushadhi_drug_name:
+          type: string
+          description: Normalized drug name from eAushadi
+          example: "Ofloxacin Tablet IP 400 mg 1x1"
+        product_knowledge_id:
+          type: string
+          format: uuid
+
+    ProductMappingUpdate:
+      type: object
+      required:
+        - usage_count
+      properties:
+        usage_count:
+          type: integer
+          example: 15
+        last_used_date:
+          type: string
+          format: date-time
+          example: "2026-05-22T10:30:00Z"
+
+    ProductMapping:
+      allOf:
+        - $ref: '#/components/schemas/ProductMappingCreate'
+        - type: object
+          required:
+            - id
+            - usage_count
+            - deleted
+            - created_by
+            - created_date
+            - modified_date
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            usage_count:
+              type: integer
+              default: 0
+              readOnly: true
+            last_used_date:
+              type: string
+              format: date-time
+              nullable: true
+              readOnly: true
+            deleted:
+              type: boolean
+              default: false
+              readOnly: true
+            created_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              readOnly: true
+            updated_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              readOnly: true
+            created_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+            modified_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+
+    ProductMappingList:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductMapping'
+
+    # ===================== Item Consumption =====================
+    ItemConsumptionCreate:
+      type: object
+      required:
+        - record_item_id
+        - facility_id
+        - supply_delivery_id
+        - record_delivery_id
+        - product_id
+        - product_knowledge_id
+        - quantity_received
+      properties:
+        record_item_id:
+          type: string
+          format: uuid
+          description: FK to the record_item that was imported
+        facility_id:
+          type: string
+          format: uuid
+          description: Facility id (denormalized for query performance)
+        supply_delivery_id:
+          type: string
+          format: uuid
+          description: FK to CARE supply_delivery created from this import
+        record_delivery_id:
+          type: string
+          format: uuid
+          description: FK to the record_delivery linking the inward_record to the delivery_order
+        product_id:
+          type: string
+          format: uuid
+          description: FK to matched CARE product
+        product_knowledge_id:
+          type: string
+          format: uuid
+          description: FK to CARE product_knowledge
+        quantity_received:
+          type: number
+          format: decimal
+          description: Quantity snapshot at consumption time
+
+    ItemConsumption:
+      allOf:
+        - $ref: '#/components/schemas/ItemConsumptionCreate'
+        - type: object
+          required:
+            - id
+            - status
+            - deleted
+            - created_by
+            - created_date
+            - modified_date
+          properties:
+            id:
+              type: string
+              format: uuid
+              readOnly: true
+            status:
+              type: string
+              enum: [ACTIVE, REVERSED]
+              default: ACTIVE
+              readOnly: true
+            deleted:
+              type: boolean
+              default: false
+              readOnly: true
+            created_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              readOnly: true
+            updated_by:
+              allOf:
+                - $ref: '#/components/schemas/UserSummary'
+              nullable: true
+              readOnly: true
+            created_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+            modified_date:
+              type: string
+              format: date-time
+              readOnly: true
+              example: "2026-05-19 19:29:35.868682+05:30"
+
+    # Trimmed ItemConsumption for embedding in InwardRecordDetail items.
+    # Omits record_item_id (parent context) and facility_id (record context).
+    ItemConsumptionEmbedded:
+      type: object
+      required:
+        - id
+        - supply_delivery_id
+        - record_delivery_id
+        - product_id
+        - product_knowledge_id
+        - quantity_received
+        - status
+        - deleted
+        - created_by
+        - created_date
+        - modified_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        supply_delivery_id:
+          type: string
+          format: uuid
+          description: FK to CARE supply_delivery created from this import
+        record_delivery_id:
+          type: string
+          format: uuid
+          description: FK to the record_delivery linking the inward_record to the delivery_order
+        product_id:
+          type: string
+          format: uuid
+          description: FK to matched CARE product
+        product_knowledge_id:
+          type: string
+          format: uuid
+          description: FK to CARE product_knowledge
+        quantity_received:
+          type: number
+          format: decimal
+          description: Quantity snapshot at consumption time
+        status:
+          type: string
+          enum: [ACTIVE, REVERSED]
+          default: ACTIVE
+          readOnly: true
+        deleted:
+          type: boolean
+          default: false
+          readOnly: true
+        created_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          readOnly: true
+        updated_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          nullable: true
+          readOnly: true
+        created_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+        modified_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+
+    # ===================== Record Delivery (embedded in InwardRecordDetail) =====================
+    RecordDelivery:
+      type: object
+      description: Link between an inward_record and a CARE delivery_order.
+      required:
+        - id
+        - delivery_order_id
+        - created_date
+        - modified_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        delivery_order_id:
+          type: string
+          format: uuid
+          description: FK to CARE delivery_order
+        created_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          readOnly: true
+        updated_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          nullable: true
+          readOnly: true
+        created_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+        modified_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+
+    # ===================== Inward Record =====================
+    InwardRecord:
+      type: object
+      description: |
+        Per-(facility, date) sync control record. Used in list responses
+        (no items or deliveries embedded).
+      required:
+        - id
+        - facility_id
+        - inward_date
+        - sync_status
+        - created_date
+        - modified_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        facility_id:
+          type: string
+          format: uuid
+        inward_date:
+          type: string
+          format: date
+          description: The date this record represents (YYYY-MM-DD)
+        sync_status:
+          type: string
+          enum: [NEVER_SYNCED, FRESH, STALE, SYNCING, FAILED]
+        initial_fetch_log_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: FK to the fetch log of the first successful fetch
+        current_fetch_log_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: FK to the fetch log of the most recent fetch
+        items_initial_count:
+          type: integer
+          description: Number of items seen on the first successful fetch
+        items_current_count:
+          type: integer
+          description: Number of items currently associated (denormalized for UI)
+        created_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          readOnly: true
+        updated_by:
+          allOf:
+            - $ref: '#/components/schemas/UserSummary'
+          nullable: true
+          readOnly: true
+        created_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+        modified_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+
+    InwardRecordDetail:
+      allOf:
+        - $ref: '#/components/schemas/InwardRecord'
+        - type: object
+          required:
+            - items
+            - deliveries
+          properties:
+            items:
+              type: array
+              description: All record_items belonging to this inward_record, each with its consumption(s)
+              items:
+                $ref: '#/components/schemas/RecordItemWithConsumptions'
+            deliveries:
+              type: array
+              description: All CARE delivery_orders linked to this inward_record
+              items:
+                $ref: '#/components/schemas/RecordDelivery'
+
+    InwardRecordList:
+      type: object
+      required:
+        - count
+        - results
+      properties:
+        count:
+          type: integer
+        next:
+          type: string
+          format: uri
+          nullable: true
+        previous:
+          type: string
+          format: uri
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InwardRecord'
+
+    # ===================== Record Item =====================
+    RecordItem:
+      type: object
+      description: |
+        Persistent snapshot of an inward item from eAushadi. One row per natural-key tuple
+        (inward_record, inward_no, drug_id, batch_no). Refetches update; they don't replace.
+      required:
+        - id
+        - inward_no
+        - drug_id
+        - drug_name
+        - batch_no
+        - status
+        - created_date
+        - modified_date
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        inward_no:
+          type: string
+          example: "INI/WH/2026-27/000931/79067"
+        drug_id:
+          type: string
+          description: eAushadi drug id
+          example: "D00251"
+        drug_name:
+          type: string
+          description: Normalized drug name (whitespace collapsed)
+          example: "Ofloxacin Tablet IP 400 mg 1x1"
+        batch_no:
+          type: string
+          example: "ODCT1328"
+        manufactured_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          example: "2028-01-31"
+        receipt_date:
+          type: string
+          format: date
+          nullable: true
+        unit_pack:
+          type: number
+          format: decimal
+          description: Unit pack as a numeric value (e.g., for "1x10x10" → 100)
+          example: 100
+        dose:
+          type: string
+          description: Dosage form
+          example: "Tablet IP"
+        quantity_in_units:
+          type: number
+          format: decimal
+          nullable: true
+        quantity_received_current:
+          type: number
+          format: decimal
+          description: Latest quantity received from upstream
+        quantity_received_initial:
+          type: number
+          format: decimal
+          description: First-seen quantity received (immutable)
+        warehouse_name:
+          type: string
+          nullable: true
+          example: "Mysuru WH"
+        status:
+          type: string
+          enum: [ACTIVE, DISAPPEARED]
+          description: ACTIVE if still in the latest fetch; DISAPPEARED if no longer present
+        created_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+        modified_date:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-05-19 19:29:35.868682+05:30"
+
+    # RecordItem with its consumption(s) attached. Used inside InwardRecordDetail.items.
+    RecordItemWithConsumptions:
+      allOf:
+        - $ref: '#/components/schemas/RecordItem'
+        - type: object
+          required:
+            - consumptions
+          properties:
+            consumptions:
+              type: array
+              description: |
+                Consumption records linked to this item. Empty array if not yet imported into CARE.
+                Phase 1 normally has 0 or 1 entries; multiple are possible when item splits are enabled.
+              items:
+                $ref: '#/components/schemas/ItemConsumptionEmbedded'
+
+    # ===================== eAushadi External Response =====================
+    EaushadhiInwardItem:
+      type: object
+      description: Individual inward item as received from the upstream eAushadi API
+      properties:
+        Sl_No:
+          type: integer
+          example: 1
+        inwardno:
+          type: string
+          example: "INI/WH/2026-27/000931/79067"
+        instituteid:
+          type: string
+          example: "000931"
+        Institute_name:
+          type: string
+          example: "CHC BANNUR"
+        InstituteType:
+          type: string
+          example: "CHC"
+        Receipt_Date:
+          type: string
+          format: date
+          example: "2026-04-28"
+        Batch_number:
+          type: string
+          example: "ODCT1328"
+        Mfg_date:
+          type: string
+          format: date
+          example: "2026-02-01"
+        Exp_date:
+          type: string
+          format: date
+          example: "2028-01-31"
+        Quantity_In_Pack:
+          type: integer
+          example: 1000
+        UnitPack:
+          type: string
+          example: "1x10x10"
+        Quantity_In_Units:
+          type: integer
+          example: 100000
+        Available_quantity:
+          type: integer
+          example: 1000
+        Warehouse_name:
+          type: string
+          example: "Mysuru WH"
+        Drug_id:
+          type: string
+          example: "D00251"
+        Drug_name:
+          type: string
+          example: "Ofloxacin  Tablet IP 400 mg 1x1"
+        NotofStandard:
+          type: string
+          enum: ["YES", "NO"]
+          example: "NO"
+        Dose:
+          type: string
+          example: "Tablet IP"
+
+    EaushadhiInwardResponse:
+      type: array
+      description: Array of inward items from eAushadi API
+      items:
+        $ref: '#/components/schemas/EaushadhiInwardItem'
+
+    # ===================== Error =====================
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          description: Machine-readable error code
+        details:
+          type: object
+          nullable: true
+          description: Field-level validation errors
+          example:
+            facility_id: ["This field is required"]
+            eaushadhi_institute_id: ["Institute ID already exists"]
+
+  responses:
+    BadRequest:
+      description: Bad Request - Invalid input parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Invalid input parameters"
+            details:
+              facility_id: ["This field is required"]
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Authentication credentials were not provided"
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error occurred"
