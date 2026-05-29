@@ -1,0 +1,48 @@
+[project]
+name = "care_eaushadhi"
+version = "0.1.0"
+description = "Django plugin for ohcnetwork/care."
+readme = "README.md"
+authors = [
+  {name = "care-ecosystem", email = "pranav.rutagi@egovernments.org"}
+]
+maintainers = [
+  {name = "care-ecosystem", email = "pranav.rutagi@egovernments.org"}
+]
+classifiers = [
+    # TODO
+]
+license = {text = "MIT"}
+dependencies = [
+    "django",
+    "celery",
+    "djangorestframework",
+]
+requires-python = ">= 3.10"
+
+[project.optional-dependencies]
+test = [
+    "ruff",  # linting
+]
+
+[project.urls]
+bugs = "https://github.com/care-ecosystem/care_eaushadhi/issues"
+changelog = "https://github.com/care-ecosystem/care_eaushadhi/blob/master/changelog.md"
+homepage = "https://github.com/care-ecosystem/care_eaushadhi"
+
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+
+[tool.uv]
+package = true
