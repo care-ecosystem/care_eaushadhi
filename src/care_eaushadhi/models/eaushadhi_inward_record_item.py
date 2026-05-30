@@ -2,8 +2,8 @@ from django.db import models
 
 from care.emr.models.base import EMRBaseModel
 
-from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
-from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
+from care_eaushadhi.models import EAushadhiFetchLog
+from care_eaushadhi.models import EAushadhiInwardRecord
 
 class RecordItemStatus(models.TextChoices):
     ACTIVE = "ACTIVE"

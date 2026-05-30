@@ -3,7 +3,7 @@ from django.db import models
 from care.emr.models.base import EMRBaseModel
 from care.emr.models.supply_delivery import DeliveryOrder
 
-from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
+from care_eaushadhi.models import EAushadhiInwardRecord
 
 class EAushadhiInwardRecordDelivery(EMRBaseModel):
     inward_record = models.ForeignKey(

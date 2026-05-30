@@ -3,14 +3,13 @@ from django.db import models
 from care.emr.models.base import EMRBaseModel
 from care.facility.models import Facility
 
-from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
+from care_eaushadhi.models import EAushadhiFetchLog
 
 class SyncStatus(models.TextChoices):
     NEVER_SYNCED = "NEVER_SYNCED"
     FRESH = "FRESH"
     STALE = "STALE"
     SYNCING = "SYNCING"
-    SYNCED = "SYNCED"
     FAILED = "FAILED"
 
 class EAushadhiInwardRecord(EMRBaseModel):

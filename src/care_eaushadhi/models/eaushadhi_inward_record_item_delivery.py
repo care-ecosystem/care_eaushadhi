@@ -6,8 +6,8 @@ from care.emr.models.product import Product
 from care.emr.models.product_knowledge import ProductKnowledge
 from care.facility.models import Facility
 
-from care_eaushadhi.src.care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwardRecordDelivery
-from care_eaushadhi.src.care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
+from care_eaushadhi.models import EAushadhiInwardRecordDelivery
+from care_eaushadhi.models import EAushadhiInwardRecordItem
 
 class InwardRecordItemDeliveryStatus(models.TextChoices):
     ACTIVE = "ACTIVE"
