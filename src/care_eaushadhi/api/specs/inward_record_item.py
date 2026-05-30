@@ -1,16 +1,14 @@
 import datetime
-from enum import Enum
 from pydantic import UUID4
 
 from care.emr.resources.base import EMRResource
 
-from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
+from care_eaushadhi.models.eaushadhi_inward_record_item import (
+    EAushadhiInwardRecordItem,
+    InwardRecordItemStatus
+)
 from care_eaushadhi.api.specs.inward_record_item_delivery import InwardRecordItemDeliveryReadSpec
 
-class RecordItemStatus(str, Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    EXPIRED = "EXPIRED"
 
 class InwardRecordItemReadSpec(EMRResource):
     __model__ = EAushadhiInwardRecordItem
@@ -31,7 +29,7 @@ class InwardRecordItemReadSpec(EMRResource):
     quantity_received_current: int = 0
     quantity_received_initial: int = 0
     warehouse_name: str | None = None
-    status: RecordItemStatus | None = None
+    status: InwardRecordItemStatus | None = None
     created_date: datetime.datetime | None = None
     modified_date: datetime.datetime | None = None
     item_deliveries: list[dict] = []

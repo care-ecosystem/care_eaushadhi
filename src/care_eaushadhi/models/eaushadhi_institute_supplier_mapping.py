@@ -3,7 +3,7 @@ from django.db import models
 from care.emr.models.base import EMRBaseModel
 from care.emr.models.organization import Organization
 
-from care_eaushadhi.models import EAushadhiInstituteMapping
+from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
 
 class EAushadhiInstituteSupplierMapping(EMRBaseModel):
     institute_mapping = models.ForeignKey(

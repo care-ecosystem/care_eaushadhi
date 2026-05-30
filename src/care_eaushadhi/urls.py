@@ -4,6 +4,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from care_eaushadhi.api.viewsets.inward_record import InwardRecordViewSet
+from care_eaushadhi.api.viewsets.initiate_inward_fetch import InitiateInwardFetchViewSet
 
 
 def healthy(request):
@@ -12,7 +13,17 @@ def healthy(request):
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
 
-router.register("inward-records", InwardRecordViewSet, basename="eaushadhi_inward_records")
+router.register(
+    "inward-records",
+    InwardRecordViewSet,
+    basename="eaushadhi_inward_records"
+)
+
+router.register(
+    "initiate-inward-fetch",
+    InitiateInwardFetchViewSet,
+    basename="eaushadhi_initiate_inward_fetch"
+)
 
 urlpatterns = [
     path("health", healthy),

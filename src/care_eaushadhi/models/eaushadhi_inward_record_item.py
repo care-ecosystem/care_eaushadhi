@@ -5,7 +5,7 @@ from care.emr.models.base import EMRBaseModel
 from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
 from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 
-class RecordItemStatus(models.TextChoices):
+class InwardRecordItemStatus(models.TextChoices):
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
     EXPIRED = "EXPIRED"
@@ -31,8 +31,8 @@ class EAushadhiInwardRecordItem(EMRBaseModel):
     quantity_received_initial = models.DecimalField(max_digits=12, decimal_places=2)
     warehouse_name = models.CharField(max_length=255)
     status = models.CharField(
-        choices=RecordItemStatus.choices,
-        default=RecordItemStatus.ACTIVE,
+        choices=InwardRecordItemStatus.choices,
+        default=InwardRecordItemStatus.ACTIVE,
         max_length=20
     )
     initial_fetch_log = models.ForeignKey(

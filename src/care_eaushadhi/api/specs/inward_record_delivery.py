@@ -3,7 +3,7 @@ from pydantic import UUID4
 
 from care.emr.resources.base import EMRResource
 
-from care_eaushadhi.models import EAushadhiInwardRecordDelivery
+from care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwardRecordDelivery
 
 class InwardRecordDeliveryReadSpec(EMRResource):
     __model__ = EAushadhiInwardRecordDelivery

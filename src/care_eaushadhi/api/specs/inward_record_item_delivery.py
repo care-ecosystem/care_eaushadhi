@@ -1,15 +1,12 @@
 import datetime
-from enum import Enum
 from pydantic import UUID4
 
 from care.emr.resources.base import EMRResource
 
-from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import EAushadhiInwardRecordItemDelivery
-
-
-class InwardRecordItemDeliveryStatus(str, Enum):
-    ACTIVE = "ACTIVE"
-    REVERSED = "REVERSED"
+from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import (
+    EAushadhiInwardRecordItemDelivery,
+    InwardRecordItemDeliveryStatus
+)
 
 
 class InwardRecordItemDeliveryReadSpec(EMRResource):
