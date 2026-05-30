@@ -6,8 +6,8 @@ from care.emr.models.product import Product
 from care.emr.models.product_knowledge import ProductKnowledge
 from care.facility.models import Facility
 
-from care_eaushadhi.models import EAushadhiInwardRecordDelivery
-from care_eaushadhi.models import EAushadhiInwardRecordItem
+from care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwardRecordDelivery
+from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
 
 class InwardRecordItemDeliveryStatus(models.TextChoices):
     ACTIVE = "ACTIVE"
@@ -59,11 +59,11 @@ class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
     )
 
     class Meta:
-        verbose_name_plural = "E-Aushadhi Item Consumptions"
+        verbose_name_plural = "E-Aushadhi Inward Record Item"
         constraints = [
             models.UniqueConstraint(
                 fields=["inward_record_item"],
-                name="unique_record_item_consumption"
+                name="uniq_inward_record_item"
             )
         ]
 

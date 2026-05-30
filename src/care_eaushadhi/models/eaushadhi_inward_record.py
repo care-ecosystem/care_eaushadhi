@@ -3,7 +3,7 @@ from django.db import models
 from care.emr.models.base import EMRBaseModel
 from care.facility.models import Facility
 
-from care_eaushadhi.models import EAushadhiFetchLog
+from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
 
 class SyncStatus(models.TextChoices):
     NEVER_SYNCED = "NEVER_SYNCED"
@@ -46,7 +46,7 @@ class EAushadhiInwardRecord(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["facility", "inward_date"],
-                name="unique_facility_inward_date"
+                name="uniq_facility_inward_date"
             )
         ]
 

@@ -27,7 +27,7 @@ class EauShadhiProductMapping(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["facility", "eaushadhi_drug_id"],
-                name="unique_facility_drug_id"
+                name="uniq_facility_drug_id"
             )
         ]
 

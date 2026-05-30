@@ -32,7 +32,7 @@ class EAushadhiInstituteSupplierMapping(EMRBaseModel):
             models.UniqueConstraint(
                 fields=["institute_mapping"],
                 condition=models.Q(is_default=True, deleted=False),
-                name="unique_default_supplier_per_institute"
+                name="uniq_def_institute_supplier"
             )
         ]
 

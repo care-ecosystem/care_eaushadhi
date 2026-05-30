@@ -2,8 +2,8 @@ from django.db import models
 
 from care.emr.models.base import EMRBaseModel
 
-from care_eaushadhi.models import EAushadhiFetchLog
-from care_eaushadhi.models import EAushadhiInwardRecord
+from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
+from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 
 class RecordItemStatus(models.TextChoices):
     ACTIVE = "ACTIVE"
@@ -51,11 +51,11 @@ class EAushadhiInwardRecordItem(EMRBaseModel):
     )
 
     class Meta:
-        verbose_name_plural = "E-Aushadhi Record Items"
+        verbose_name_plural = "E-Aushadhi Inward Record Item Batch"
         constraints = [
             models.UniqueConstraint(
                 fields=["inward_record", "inward_no", "drug_id", "batch_no"],
-                name="unique_inward_drug_batch"
+                name="uniq_inward_drug_batch"
             )
         ]
 
