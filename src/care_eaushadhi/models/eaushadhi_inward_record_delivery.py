@@ -23,7 +23,7 @@ class EAushadhiInwardRecordDelivery(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["delivery_order"],
-                name="unique_delivery_order"
+                name="uniq_delivery_order"
             )
         ]
         indexes = [

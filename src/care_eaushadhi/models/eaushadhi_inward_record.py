@@ -10,7 +10,6 @@ class SyncStatus(models.TextChoices):
     FRESH = "FRESH"
     STALE = "STALE"
     SYNCING = "SYNCING"
-    SYNCED = "SYNCED"
     FAILED = "FAILED"
 
 class EAushadhiInwardRecord(EMRBaseModel):
@@ -47,7 +46,7 @@ class EAushadhiInwardRecord(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["facility", "inward_date"],
-                name="unique_facility_inward_date"
+                name="uniq_facility_inward_date"
             )
         ]
 

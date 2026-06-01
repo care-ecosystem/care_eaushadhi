@@ -44,7 +44,7 @@ class EAushadhiFetchLog(EMRBaseModel):
         indexes = [
             models.Index(
                 fields=["facility", "inward_date", "-created_date"],
-                name="idx_facility_inward_date_created"
+                name="idx_facility_inward_created"
             )
         ]
 

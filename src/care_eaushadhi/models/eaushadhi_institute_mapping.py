@@ -19,7 +19,7 @@ class EAushadhiInstituteMapping(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["facility"],
-                name="unique_facility_eaushadhi_mapping"
+                name="uniq_facility_mapping"
             )
         ]
 

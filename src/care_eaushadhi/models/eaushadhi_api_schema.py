@@ -13,7 +13,7 @@ class EAushadhiApiSchema(EMRBaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["schema_version", "endpoint", "response_code"],
-                name="unique_schema_endpoint_response"
+                name="uniq_schema_endpoint_response"
             )
         ]
 
