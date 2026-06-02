@@ -15,7 +15,7 @@ class InwardRecordListSpec(EMRResource):
     id: UUID4 | None = None
     facility_id: UUID4 | None = None
     inward_date: datetime.date | None = None
-    sync_status: SyncStatus = SyncStatus.NEVER_SYNCED
+    sync_status: SyncStatus | None = None
     last_successful_fetch_log_id: UUID4 | None = None
     last_attempted_fetch_log_id: UUID4 | None = None
     items_initial_count: int = 0

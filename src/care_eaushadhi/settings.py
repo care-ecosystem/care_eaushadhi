@@ -98,11 +98,13 @@ class PluginSettings:  # pragma: no cover
 
 
 REQUIRED_SETTINGS = {
-    "CARE_EAUSHADHI_CONFIG",
+    "EAUSHADHI_API_ENDPOINT",
+    "EAUSHADHI_API_SECRET_KEY"
 }
 
 DEFAULTS = {
-    "CARE_EAUSHADHI_OPTIONAL_CONFIG": "test",
+    "EAUSHADHI_API_ENDPOINT": "",
+    "EAUSHADHI_API_SECRET_KEY": ""
 }
 
 plugin_settings = PluginSettings(

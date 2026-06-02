@@ -6,11 +6,10 @@ from care.facility.models import Facility
 from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog
 
 class SyncStatus(models.TextChoices):
-    NEVER_SYNCED = "NEVER_SYNCED"
-    FRESH = "FRESH"
-    STALE = "STALE"
-    SYNCING = "SYNCING"
+    FETCHING = "FETCHING"
     FAILED = "FAILED"
+    PARSING = "PARSING"
+    FETCHED = "FETCHED"
 
 class EAushadhiInwardRecord(EMRBaseModel):
     facility = models.ForeignKey(
@@ -21,8 +20,10 @@ class EAushadhiInwardRecord(EMRBaseModel):
     inward_date = models.DateField()
     sync_status = models.CharField(
         choices=SyncStatus.choices,
-        default=SyncStatus.NEVER_SYNCED,
-        max_length=20
+        max_length=20,
+        null=True,
+        blank=True,
+        default=None,
     )
     last_successful_fetch_log = models.ForeignKey(
         EAushadhiFetchLog,
