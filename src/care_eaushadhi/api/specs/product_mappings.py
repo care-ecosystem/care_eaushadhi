@@ -68,8 +68,8 @@ class ProductMappingReadSpec(EMRResource):
         mapping["usage_count"] = obj.usage_count
         mapping["last_used_date"] = obj.last_used_date.isoformat() if obj.last_used_date else None
         mapping["deleted"] = obj.deleted
-        mapping["created_date"] = str(obj.created_date) if obj.created_date else None
-        mapping["modified_date"] = str(obj.modified_date) if obj.modified_date else None
+        mapping["created_date"] = obj.created_date.isoformat() if obj.created_date else None
+        mapping["modified_date"] = obj.modified_date.isoformat() if obj.modified_date else None
 
         if obj.created_by:
             mapping["created_by"] = {

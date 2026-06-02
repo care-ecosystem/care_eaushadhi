@@ -14,7 +14,7 @@ class EAushadhiProductMapping(EMRBaseModel):
         help_text="Facility-specific or global if null"
     )
 
-    eaushadhi_drug_id = models.CharField(max_length=255)
+    eaushadhi_drug_id = models.CharField(max_length=255, db_index=True)
     eaushadhi_drug_name = models.CharField(max_length=500)
 
     product_knowledge = models.ForeignKey(
