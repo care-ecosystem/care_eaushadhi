@@ -1,4 +1,5 @@
 from pydantic import UUID4
+from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
@@ -87,3 +88,14 @@ class ProductMappingReadSpec(EMRResource):
                 "last_name": obj.updated_by.last_name,
                 "email": obj.updated_by.email,
             }
+
+class ProductMappingUpdateSpec(EMRResource):
+    __model__ = EAushadhiProductMapping
+
+    usage_count: int
+    last_used_date: datetime
+
+    def perform_extra_deserialization(self, is_update, obj):
+        obj.usage_count = self.usage_count
+        obj.last_used_date = self.last_used_date
+        return obj
