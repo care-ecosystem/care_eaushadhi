@@ -14,43 +14,42 @@ class InwardRecordItemDeliveryStatus(models.TextChoices):
     REVERSED = "REVERSED"
 
 class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
-    inward_record_item = models.OneToOneField(
+    inward_record_item = models.ForeignKey(
         EAushadhiInwardRecordItem,
         on_delete=models.CASCADE,
-        unique=True,
-        related_name="consumption"
+        related_name="item_deliveries"
     )
     facility = models.ForeignKey(
         Facility,
         on_delete=models.CASCADE,
-        related_name="eaushadhi_item_consumptions"
+        related_name="eaushadhi_inward_record_item_deliveries"
     )
     supply_delivery = models.ForeignKey(
         SupplyDelivery,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="eaushadhi_consumptions"
+        related_name="eaushadhi_inward_record_item_deliveries"
     )
     inward_record_delivery = models.ForeignKey(
         EAushadhiInwardRecordDelivery,
         on_delete=models.CASCADE,
-        related_name="item_consumptions"
+        related_name="inward_record_item_deliveries"
     )
     product = models.ForeignKey(
         Product,
         on_delete=models.PROTECT,
-        related_name="eaushadhi_consumptions"
+        related_name="eaushadhi_inward_record_item_deliveries"
     )
     product_knowledge = models.ForeignKey(
         ProductKnowledge,
         on_delete=models.PROTECT,
-        related_name="eaushadhi_consumptions"
+        related_name="eaushadhi_inward_item_deliveries"
     )
     quantity_received = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        help_text="Snapshot at consumption time"
+        help_text="Snapshot at time of inward receipt"
     )
     status = models.CharField(
         choices=InwardRecordItemDeliveryStatus.choices,
@@ -59,13 +58,7 @@ class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
     )
 
     class Meta:
-        verbose_name_plural = "E-Aushadhi Inward Record Item"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["inward_record_item"],
-                name="uniq_inward_record_item"
-            )
-        ]
+        verbose_name_plural = "E-Aushadhi Inward Record Item Deliveries"
 
     def __str__(self):
         return f"Inward Record Item Delivery - {self.inward_record_item}"

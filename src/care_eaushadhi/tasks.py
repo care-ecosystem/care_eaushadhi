@@ -1,3 +1,4 @@
+from decimal import Decimal
 import time
 import logging
 from datetime import date
@@ -7,6 +8,7 @@ from django.db import transaction
 import requests
 
 from care.facility.models import Facility
+from care.users.models import User
 from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog, FetchStatus
@@ -14,13 +16,14 @@ from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord,
 from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
 from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem, InwardRecordItemStatus
 from care_eaushadhi.api.services.fetch_from_eaushadhi import EAushadhiService
+from care_eaushadhi.settings import plugin_settings as settings
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(
     bind=True,
-    max_retries=3,
+    max_retries=settings.EAUSHADHI_API_RETRY_COUNT,
     default_retry_delay=5,
 )
 def fetch_inward_from_eaushadi(
@@ -29,6 +32,7 @@ def fetch_inward_from_eaushadi(
     inward_record_id,
     facility_id,
     inward_date,
+    user_id
 ):
     logger.info(
         "Celery Task Triggered: fetch_inward_from_eaushadi | "
@@ -40,6 +44,10 @@ def fetch_inward_from_eaushadi(
     inward_record = get_object_or_404(EAushadhiInwardRecord, external_id=inward_record_id)
     facility = get_object_or_404(Facility, external_id=facility_id)
     institute_mapping = get_object_or_404(EAushadhiInstituteMapping, facility=facility)
+    user = get_object_or_404(User, external_id=user_id)
+
+    inward_record.last_attempted_fetch_log = fetch_log
+    inward_record.save(update_fields=["last_attempted_fetch_log"])
 
     start_ms = int(time.time() * 1000)
 
@@ -50,12 +58,29 @@ def fetch_inward_from_eaushadi(
             inward_date=inward_date,
         )
     except requests.RequestException as exc:
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "Max retries exhausted for eAushadi fetch | facility=%s date=%s",
+                facility_id, inward_date
+            )
+
+            _mark_failed(
+                fetch_log, inward_record,
+                http_status_code=None,
+                error_code="NETWORK_ERROR",
+                error_detail=str(exc),
+                user=user
+            )
+            raise
+
         retry_countdown = 5 * (3 ** self.request.retries)
+
         logger.warning(
             "Network error calling eAushadi API (attempt %s), retrying in %ss: %s",
             self.request.retries + 1, retry_countdown, exc,
         )
-        raise self.retry(exc=exc, countdown=retry_countdown)
+
+        raise self.retry(exc=exc, countdown=retry_countdown) from exc
     except Exception as exc:
         logger.exception("Unhandled error in fetch_inward_from_eaushadi")
         _mark_failed(
@@ -63,6 +88,7 @@ def fetch_inward_from_eaushadi(
             http_status_code=None,
             error_code="UNHANDLED_EXCEPTION",
             error_detail=str(exc),
+            user=user
         )
         raise  # still let Celery retry/fail the task
 
@@ -83,6 +109,7 @@ def fetch_inward_from_eaushadi(
                 http_status_code=status_code,
                 error_code="HTTP_ERROR",
                 error_detail=f"Unexpected status code: {status_code}",
+                user=user
             )
             return
 
@@ -97,6 +124,7 @@ def fetch_inward_from_eaushadi(
                 http_status_code=status_code,
                 error_code="UNEXPECTED_RESPONSE_SHAPE",
                 error_detail=f"Expected list, got {type(data).__name__}: {str(data)[:200]}",
+                user=user
             )
             return
 
@@ -166,6 +194,7 @@ def fetch_inward_from_eaushadi(
                     db_item.warehouse_name = warehouse_name
                     db_item.status = InwardRecordItemStatus.ACTIVE
                     db_item.current_fetch_log = fetch_log
+                    db_item.updated_by = user
                     upsert_list.append(db_item)
                 else:
                     upsert_list.append(
@@ -188,6 +217,8 @@ def fetch_inward_from_eaushadi(
                             status=InwardRecordItemStatus.ACTIVE,
                             initial_fetch_log=fetch_log,
                             current_fetch_log=fetch_log,
+                            created_by=user,
+                            updated_by=user,
                         )
                     )
 
@@ -196,6 +227,7 @@ def fetch_inward_from_eaushadi(
                 db_item = existing_lookup[key]
                 db_item.status = InwardRecordItemStatus.INACTIVE
                 db_item.current_fetch_log = fetch_log
+                db_item.updated_by = user
                 upsert_list.append(db_item)
 
             EAushadhiInwardRecordItem.objects.bulk_create(
@@ -217,6 +249,7 @@ def fetch_inward_from_eaushadi(
                     "warehouse_name",
                     "status",
                     "current_fetch_log",
+                    "updated_by",
                 ],
             )
 
@@ -225,6 +258,7 @@ def fetch_inward_from_eaushadi(
             fetch_log.api_response_time_ms = elapsed_ms
             fetch_log.total_items_in_response = len(data)
             fetch_log.retry_count = self.request.retries
+            fetch_log.updated_by = user
 
             fetch_log.save(
                 update_fields=[
@@ -233,6 +267,7 @@ def fetch_inward_from_eaushadi(
                     "api_response_time_ms",
                     "total_items_in_response",
                     "retry_count",
+                    "updated_by",
                 ]
             )
 
@@ -248,12 +283,15 @@ def fetch_inward_from_eaushadi(
                 status=InwardRecordItemStatus.ACTIVE,
             ).count()
 
+            inward_record.updated_by = user
+
             inward_record.save(
                 update_fields=[
                     "sync_status",
                     "last_successful_fetch_log",
                     "items_initial_count",
                     "items_current_count",
+                    "updated_by",
                 ]
             )
     except Exception as exc:
@@ -266,6 +304,7 @@ def fetch_inward_from_eaushadi(
             http_status_code=None,
             error_code="PROCESSING_ERROR",
             error_detail=str(exc),
+            user=user
         )
         raise  # let Celery mark the task as failed
 
@@ -275,20 +314,23 @@ def fetch_inward_from_eaushadi(
     )
 
 
-def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_detail):
+def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_detail, user = None):
     try:
         fetch_log.fetch_status = FetchStatus.FAILURE
         fetch_log.http_status_code = http_status_code
         fetch_log.error_code = error_code
         fetch_log.error_message = f"Fetch failed with error_code={error_code}"
         fetch_log.error_detail = error_detail
+        fetch_log.updated_by = user
+
         fetch_log.save(
             update_fields=[
                 "fetch_status",
                 "http_status_code",
                 "error_code",
                 "error_message",
-                "error_detail"
+                "error_detail",
+                "updated_by"
             ]
         )
     except Exception:
@@ -296,7 +338,8 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
 
     try:
         inward_record.sync_status = SyncStatus.FAILED
-        inward_record.save(update_fields=["sync_status"])
+        inward_record.updated_by = user
+        inward_record.save(update_fields=["sync_status", "updated_by"])
     except Exception:
         logger.exception("Failed to update inward_record during failure marking")
 
@@ -312,19 +355,19 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
-def _parse_unit_pack(raw: str) -> float:
+def _parse_unit_pack(raw: str) -> Decimal:
     """
     Convert UnitPack strings like "1x10x10" to a numeric value by multiplying
     all parts. Falls back to 1.0 if unparseable.
     """
     if not raw:
-        return 1.0
+        return Decimal("1")
     try:
-        parts = [float(p) for p in raw.lower().split("x") if p.strip()]
-        result = 1.0
+        parts = [Decimal(p) for p in raw.lower().split("x") if p.strip()]
+        result = Decimal("1")
         for p in parts:
             result *= p
         return result
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, ArithmeticError):
         logger.warning("Could not parse UnitPack: %r, defaulting to 1.0", raw)
-        return 1.0
+        return Decimal("1")

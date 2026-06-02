@@ -66,7 +66,7 @@ class InitiateInwardFetchViewSet(GenericViewSet):
             facility=facility
         )
 
-        with transaction.atomic(), Lock(f"eaushadhi-initiate-fetch:{facility_id}:{inward_date}"):
+        with Lock(f"eaushadhi-initiate-fetch:{facility_id}:{inward_date}"), transaction.atomic():
             existing_fetch_record = EAushadhiInwardRecord.objects.filter(
                 facility = facility,
                 inward_date = inward_date
@@ -76,45 +76,60 @@ class InitiateInwardFetchViewSet(GenericViewSet):
                 if existing_fetch_record.sync_status == SyncStatus.FETCHING:
                     return Response({
                         "status": "processing",
+                        "task_id": existing_fetch_record.last_attempted_fetch_log.external_id,
                         "message": "The data fetch is in progress"
-                    }, status.HTTP_202_ACCEPTED)
+                    }, status.HTTP_200_OK)
 
                 if existing_fetch_record.sync_status == SyncStatus.FETCHED and not force_refresh:
                     return Response({
                         "status": "Success",
-                        "inward_record_id": existing_fetch_record.external_id,
+                        "task_id": existing_fetch_record.last_successful_fetch_log.external_id,
                         "message": "Using cached data"
-                    }, status.HTTP_202_ACCEPTED)
+                    }, status.HTTP_200_OK)
 
-            inward_record, _ = EAushadhiInwardRecord.objects.update_or_create(
+            inward_record, is_created = EAushadhiInwardRecord.objects.update_or_create(
                 facility=facility,
                 inward_date=inward_date,
                 defaults={
-                    "sync_status": SyncStatus.FETCHING
+                    "sync_status": SyncStatus.FETCHING,
+                    "updated_by": request.user
                 }
             )
+
+            if is_created:
+                inward_record.created_by = request.user
 
             fetch_log = EAushadhiFetchLog.objects.create(
                 facility=facility,
                 inward_date=inward_date,
                 triggered_by=triggered_by,
                 fetch_status=FetchStatus.PENDING,
+                created_by=request.user,
+                updated_by=request.user,
             )
 
             inward_record.last_attempted_fetch_log = fetch_log
-            inward_record.save()
+            inward_record.updated_by = request.user
+            inward_record.save(
+                update_fields=[
+                    "last_attempted_fetch_log",
+                    "updated_by",
+                    *( ["created_by"] if is_created else [] )
+                ]
+            )
 
-            task = fetch_inward_from_eaushadi.delay(
+            fetch_inward_from_eaushadi.delay(
                 fetch_log_id = fetch_log.external_id,
                 inward_record_id = inward_record.external_id,
                 facility_id = facility_id,
-                inward_date = inward_date
+                inward_date = inward_date,
+                user_id = request.user.external_id
             )
 
             return Response(
                 {
                     "status": "processing",
-                    "task_id": task.id,
+                    "task_id": fetch_log.external_id,
                     "message": (
                         f"Fetch initiated. Poll /inward-records/"
                         f"?facility_id={facility_id}"

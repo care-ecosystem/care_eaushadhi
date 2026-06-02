@@ -11,11 +11,6 @@ class EAushadhiService:
     @staticmethod
     def fetch_from_eaushadhi(api_secret_key_code, inward_date):
         inward_date_ddmmyyyy = date.fromisoformat(inward_date).strftime("%d/%m/%Y")
-
-        logger.info("Fetching data from e-Aushadhi API for date: %s", inward_date_ddmmyyyy)
-        logger.info("Using e-Aushadhi API endpoint: %s", settings.EAUSHADHI_API_ENDPOINT)
-        logger.info("Using API secret key code: %s", api_secret_key_code)
-
         response = None
 
         try:
@@ -37,9 +32,6 @@ class EAushadhiService:
                 json=payload,
                 timeout=30
             )
-
-            logger.info("Received response from e-Aushadhi API with status code: %s", response.status_code)
-            logger.debug("Response content: %s", response.text)
 
             return {
                 "status_code": response.status_code,
