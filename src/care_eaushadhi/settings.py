@@ -99,12 +99,14 @@ class PluginSettings:  # pragma: no cover
 
 REQUIRED_SETTINGS = {
     "EAUSHADHI_API_ENDPOINT",
-    "EAUSHADHI_API_SECRET_KEY"
+    "EAUSHADHI_API_SECRET_KEY",
+    "EAUSHADHI_API_RETRY_COUNT"
 }
 
 DEFAULTS = {
     "EAUSHADHI_API_ENDPOINT": "",
-    "EAUSHADHI_API_SECRET_KEY": ""
+    "EAUSHADHI_API_SECRET_KEY": "",
+     "EAUSHADHI_API_RETRY_COUNT": 5
 }
 
 plugin_settings = PluginSettings(
