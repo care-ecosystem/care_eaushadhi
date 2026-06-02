@@ -7,15 +7,16 @@ from rest_framework.exceptions import ValidationError as RestFrameworkValidation
 from care.emr.resources.base import EMRResource
 from care.facility.models import Facility
 from care.emr.models import ProductKnowledge
+from care.emr.resources.inventory.product_knowledge.spec import ProductKnowledgeReadSpec
 
 from care_eaushadhi.models.eaushadhi_product_mapping import (
-    EauShadhiProductMapping,
+    EAushadhiProductMapping,
 )
 
 
 
 class ProductMappingCreateSpec(EMRResource):
-    __model__ = EauShadhiProductMapping
+    __model__ = EAushadhiProductMapping
 
     facility_id: UUID4 | None = None
     eaushadhi_drug_id: str
@@ -41,13 +42,13 @@ class ProductMappingCreateSpec(EMRResource):
         return obj
 
 class ProductMappingReadSpec(EMRResource):
-    __model__ = EauShadhiProductMapping
+    __model__ = EAushadhiProductMapping
 
     id: UUID4 | None = None
     facility_id: UUID4 | None = None
     eaushadhi_drug_id: str
     eaushadhi_drug_name: str
-    product_knowledge_id: UUID4
+    product_knowledge: dict | None = None
     usage_count: int = 0
     last_used_date: str | None = None
     deleted: bool = False
@@ -60,7 +61,10 @@ class ProductMappingReadSpec(EMRResource):
     def perform_extra_serialization(cls, mapping, obj):
         mapping["id"] = str(obj.external_id)
         mapping["facility_id"] = str(obj.facility.external_id) if obj.facility else None
-        mapping["product_knowledge_id"] = str(obj.product_knowledge.external_id)
+        # mapping["product_knowledge_id"] = str(obj.product_knowledge.external_id)
+        mapping["product_knowledge"] = ProductKnowledgeReadSpec.serialize(
+            obj.product_knowledge
+        ).to_json()
         mapping["usage_count"] = obj.usage_count
         mapping["last_used_date"] = obj.last_used_date.isoformat() if obj.last_used_date else None
         mapping["deleted"] = obj.deleted

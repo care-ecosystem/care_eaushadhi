@@ -5,12 +5,11 @@ from rest_framework.response import Response
 from care.emr.api.viewsets.base import (
     EMRCreateMixin,
     EMRListMixin,
-    EMRRetrieveMixin,
     EMRBaseViewSet,
 )
 
 from care_eaushadhi.models.eaushadhi_product_mapping import (
-    EauShadhiProductMapping,
+    EAushadhiProductMapping,
 )
 from care_eaushadhi.api.specs.product_mappings import (
     ProductMappingCreateSpec,
@@ -23,7 +22,7 @@ class ProductMappingViewSet(
     EMRListMixin,
     EMRBaseViewSet,
 ):
-    database_model = EauShadhiProductMapping
+    database_model = EAushadhiProductMapping
 
     pydantic_model = ProductMappingCreateSpec
     pydantic_read_model = ProductMappingReadSpec
@@ -36,6 +35,8 @@ class ProductMappingViewSet(
             .select_related(
                 "facility",
                 "product_knowledge",
+                "product_knowledge__category",
+                "product_knowledge__facility",
                 "created_by",
                 "updated_by",
             )
@@ -66,12 +67,22 @@ class ProductMappingViewSet(
         try:
             return super().create(request, *args, **kwargs)
         except IntegrityError:
+            facility_id = request.data.get("facility_id")
+            if facility_id:
+                msg = (
+                    "Product mapping already exists for facility, eAushadhi drug and product knowledge"
+                )
+            else:
+                msg = (
+                    "Global product mapping already exists for eAushadhi drug and product knowledge"
+                )
+
             return Response(
                 {
                     "errors": [
                         {
                             "type": "conflict",
-                            "msg": "Product mapping already exists for this eAushadi drug and product knowledge combination",
+                            "msg": msg,
                         }
                     ]
                 },

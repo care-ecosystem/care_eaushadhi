@@ -4,7 +4,7 @@ from care.emr.models.base import EMRBaseModel
 from care.facility.models import Facility
 from care.emr.models import ProductKnowledge
 
-class EauShadhiProductMapping(EMRBaseModel):
+class EAushadhiProductMapping(EMRBaseModel):
     facility = models.ForeignKey(
         Facility,
         on_delete=models.CASCADE,
