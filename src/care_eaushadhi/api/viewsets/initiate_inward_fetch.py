@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
+from pydantic import BaseModel, ValidationError as PydanticValidationError
 
 from care.facility.models.facility import Facility
 from care.security.authorization.base import AuthorizationController
@@ -11,17 +12,21 @@ from care.utils.lock import Lock
 from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
-from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog, FetchStatus
+from care_eaushadhi.models.eaushadhi_fetch_log import EAushadhiFetchLog, FetchStatus, FetchTriggeredBy
 from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord, SyncStatus
 
 from care_eaushadhi.tasks import fetch_inward_from_eaushadi
 
+class InitiateInwardFetchRequestSpec(BaseModel):
+    facility_id: str
+    inward_date: str
+    triggered_by: FetchTriggeredBy
+    force_refresh: bool = False
 
 class InitiateInwardFetchViewSet(GenericViewSet):
     def authorize_fetch(self, facility):
         if not AuthorizationController.call(
-            # "can_use_eaushadhi_integration",
-            "can_write_supply_delivery",
+            "can_use_eaushadhi_integration",
             self.request.user,
             facility,
         ):
@@ -29,11 +34,18 @@ class InitiateInwardFetchViewSet(GenericViewSet):
 
     # Overriding the default create API
     def create(self, request, *args, **kwargs):
-        facility_id = request.data.get("facility_id")
-        inward_date = request.data.get("inward_date")
-        triggered_by = request.data.get("triggered_by")
-        force_refresh = request.data.get("force_refresh", False)
+        try:
+            request_data = InitiateInwardFetchRequestSpec.model_validate(request.data)
+        except PydanticValidationError as e:
+            return Response(
+                {"errors": e.errors()},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        facility_id = request_data.facility_id
+        inward_date = request_data.inward_date
+        triggered_by = request_data.triggered_by
+        force_refresh = request_data.force_refresh
 
         if not facility_id:
             raise ValidationError(
