@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 @shared_task(
     bind=True,
+    name="care_eaushadhi.tasks.fetch_inward_from_eaushadi",
     max_retries=settings.EAUSHADHI_API_RETRY_COUNT,
     default_retry_delay=5,
 )
