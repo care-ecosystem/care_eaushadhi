@@ -11,6 +11,7 @@ from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 from care_eaushadhi.models.eaushadhi_inward_record_delivery import (
     EAushadhiInwardRecordDelivery,
 )
+from care.emr.resources.user.spec import UserSpec
 
 
 class RecordDeliveryViewSet(GenericViewSet):
@@ -89,8 +90,10 @@ class RecordDeliveryViewSet(GenericViewSet):
                 "inward_record_id": str(delivery.inward_record.external_id),
                 "delivery_order_id": str(delivery.delivery_order.external_id),
                 "facility_id": str(facility.external_id),
-                "created_by": user_data,
-                "updated_by": user_data,
+                # "created_by": user_data,
+                # "updated_by": user_data,
+                "created_by": UserSpec.serialize(delivery.created_by).to_json(),
+                "updated_by": UserSpec.serialize(delivery.updated_by).to_json(),
                 "created_date": delivery.created_date.isoformat(),
                 "modified_date": delivery.modified_date.isoformat(),
             },
