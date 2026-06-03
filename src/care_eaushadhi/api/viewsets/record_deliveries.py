@@ -91,8 +91,8 @@ class RecordDeliveryViewSet(GenericViewSet):
                 "facility_id": str(facility.external_id),
                 "created_by": user_data,
                 "updated_by": user_data,
-                "created_date": str(delivery.created_date),
-                "modified_date": str(delivery.modified_date),
+                "created_date": delivery.created_date.isoformat(),
+                "modified_date": delivery.modified_date.isoformat(),
             },
             status=status.HTTP_201_CREATED,
         )
