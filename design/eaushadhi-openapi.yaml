@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
-  title: eAushadi Integration Plugin API
+  title: eAushadhi Integration Plugin API
   description: |
-    API specification for the eAushadi Integration Plugin for CARE.
+    API specification for the eAushadhi Integration Plugin for CARE.
 
     This plugin allows healthcare facilities to:
-    - Fetch daily inward stock details from the eAushadi API
+    - Fetch daily inward stock details from the eAushadhi API
     - Import inward stock into CARE
     - Manage facility-to-institute mappings (and their supplier mappings)
     - Track API schema versions and validate responses
@@ -25,33 +25,35 @@ info:
 servers:
   - url: https://care.ohc.network/
     description: Dev server
+  - url: https://care-k3s.digit.org/
+    description: Egov server
 
 tags:
   - name: Institute Mappings
-    description: Manage facility to eAushadi institute mappings (with embedded supplier mappings)
+    description: Manage facility to eAushadhi institute mappings (with embedded supplier mappings)
   - name: API Schemas
     description: Manage API schema versions and validation rules
   - name: Product Mappings
-    description: Manage eAushadi product to Care Product Knowledge mappings
+    description: Manage eAushadhi product to Care Product Knowledge mappings
   - name: Item Deliveries
     description: Track imported inward items (one row per record_item imported into CARE)
   - name: Record Deliveries
     description: Link inward records to CARE delivery_orders
   - name: Fetch Inwards
-    description: Trigger fetches from eAushadi and inspect synced inward records
+    description: Trigger fetches from eAushadhi and inspect synced inward records
 
 security:
   - BearerAuth: []
 
 paths:
   # ---------- Institute Mappings ----------
-  /api/care_eaushadi/institute-mappings/:
+  /api/care_eaushadhi/institute-mappings/:
     post:
       tags:
         - Institute Mappings
       summary: Create institute mapping
       description: |
-        Create a mapping between a CARE facility and eAushadi institute, optionally
+        Create a mapping between a CARE facility and eAushadhi institute, optionally
         with one or more supplier mappings. A facility can have only one institute
         mapping (UNIQUE on facility_id).
       operationId: createInstituteMapping
@@ -157,7 +159,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/institute-mappings/{id}/:
+  /api/care_eaushadhi/institute-mappings/{id}/:
     get:
       tags:
         - Institute Mappings
@@ -249,7 +251,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/institute-mappings/{id}/supplier-mappings/:
+  /api/care_eaushadhi/institute-mappings/{id}/supplier-mappings/:
     patch:
       tags:
         - Institute Mappings
@@ -313,7 +315,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- API Schemas ----------
-  /api/care_eaushadi/api-schemas/:
+  /api/care_eaushadhi/api-schemas/:
     post:
       tags:
         - API Schemas
@@ -423,7 +425,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/api-schemas/{id}/:
+  /api/care_eaushadhi/api-schemas/{id}/:
     get:
       tags:
         - API Schemas
@@ -451,13 +453,13 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- Product Mappings ----------
-  /api/care_eaushadi/product-mappings/:
+  /api/care_eaushadhi/product-mappings/:
     post:
       tags:
         - Product Mappings
       summary: Create product mapping
       description: |
-        Create a mapping between an eAushadi product and a CARE Product Knowledge entry.
+        Create a mapping between an eAushadhi product and a CARE Product Knowledge entry.
         Mappings can be facility-specific (set facility_id) or global (omit facility_id).
         UNIQUE(facility_id, eaushadhi_drug_id).
       operationId: createProductMapping
@@ -500,7 +502,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: "Product mapping already exists for this facility and eAushadi drug"
+                error: "Product mapping already exists for this facility and eAushadhi drug"
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -512,12 +514,14 @@ paths:
       parameters:
         - name: facility_id
           in: query
+          required: true
           description: Filter by facility id. Omit to include global mappings.
           schema:
             type: string
             format: uuid
         - name: eaushadhi_drug_id
           in: query
+          required: true
           schema:
             type: string
         - name: page
@@ -552,7 +556,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/product-mappings/{id}/:
+  /api/care_eaushadhi/product-mappings/{id}/:
     patch:
       tags:
         - Product Mappings
@@ -594,7 +598,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- Record Item Deliveries ----------
-  /api/care_eaushadi/record-item-deliveries/:
+  /api/care_eaushadhi/record-item-deliveries/:
     post:
       tags:
         - Item Deliveries
@@ -641,7 +645,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- Record Deliveries ----------
-  /api/care_eaushadi/record-deliveries/:
+  /api/care_eaushadhi/record-deliveries/:
     post:
       tags:
         - Record Deliveries
@@ -684,14 +688,14 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ---------- Fetch Inwards ----------
-  /api/care_eaushadi/initiate-inward-fetch/:
+  /api/care_eaushadhi/initiate-inward-fetch/:
     post:
       tags:
         - Fetch Inwards
-      summary: Initiate inward fetch from eAushadi API (Async)
+      summary: Initiate inward fetch from eAushadhi API (Async)
       description: |
-        Initiates an asynchronous fetch of inward stock data from eAushadi for a specific date.
-        Triggers a Celery background task that calls eAushadi, validates the response,
+        Initiates an asynchronous fetch of inward stock data from eAushadhi for a specific date.
+        Triggers a Celery background task that calls eAushadhi, validates the response,
         and upserts an inward_record plus its record_items.
 
         Returns 202 immediately with a task_id. Poll `/inward-records/` to see results.
@@ -774,7 +778,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/inward-records/:
+  /api/care_eaushadhi/inward-records/:
     get:
       tags:
         - Fetch Inwards
@@ -801,7 +805,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [NEVER_SYNCED, FRESH, STALE, SYNCING, FAILED]
+            enum: [FETCHING, PARSING, FETCHED, FAILED]
         - name: page
           in: query
           schema:
@@ -834,7 +838,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /api/care_eaushadi/inward-records/{id}/:
+  /api/care_eaushadhi/inward-records/{id}/:
     get:
       tags:
         - Fetch Inwards
@@ -921,7 +925,7 @@ components:
             FK to CARE supplier (emr_organization where org_type = 'product_supplier').
         eaushadhi_warehouse_name:
           type: string
-          description: Warehouse name from eAushadi (used to match incoming inwards to this supplier)
+          description: Warehouse name from eAushadhi (used to match incoming inwards to this supplier)
           example: "Mysuru WH"
         is_default:
           type: boolean
@@ -977,7 +981,7 @@ components:
           description: CARE facility id reference
         eaushadhi_institute_id:
           type: string
-          description: eAushadi institute ID (e.g. "000931")
+          description: eAushadhi institute ID (e.g. "000931")
           example: "000931"
         schema_version:
           type: string
@@ -1194,7 +1198,7 @@ components:
           example: "D00251"
         eaushadhi_drug_name:
           type: string
-          description: Normalized drug name from eAushadi
+          description: Normalized drug name from eAushadhi
           example: "Ofloxacin Tablet IP 400 mg 1x1"
         product_knowledge_id:
           type: string
@@ -1626,7 +1630,7 @@ components:
     RecordItem:
       type: object
       description: |
-        Persistent snapshot of an inward item from eAushadi. One row per natural-key tuple
+        Persistent snapshot of an inward item from eAushadhi. One row per natural-key tuple
         (inward_record, inward_no, drug_id, batch_no). Refetches update; they don't replace.
       required:
         - id
@@ -1647,7 +1651,7 @@ components:
           example: "INI/WH/2026-27/000931/79067"
         drug_id:
           type: string
-          description: eAushadi drug id
+          description: eAushadhi drug id
           example: "D00251"
         drug_name:
           type: string
@@ -1675,7 +1679,7 @@ components:
           example: 100
         unit_pack_raw:
           type: string
-          description: Raw unit pack string as received from eAushadi
+          description: Raw unit pack string as received from eAushadhi
           example: "1x10x10"
         dose:
           type: string
@@ -1729,10 +1733,10 @@ components:
               items:
                 $ref: '#/components/schemas/RecordItemDeliveryEmbedded'
 
-    # ===================== eAushadi External Response =====================
+    # ===================== eAushadhi External Response =====================
     EaushadhiInwardItem:
       type: object
-      description: Individual inward item as received from the upstream eAushadi API
+      description: Individual inward item as received from the upstream eAushadhi API
       properties:
         Sl_No:
           type: integer
@@ -1792,10 +1796,110 @@ components:
         Dose:
           type: string
           example: "Tablet IP"
+    ProductKnowledge:
+      description: product_knowledge
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "71b16f80-1b8a-43d5-be34-d673b670b63f"
+
+        alternate_identifier:
+          type: string
+          nullable: true
+          example: null
+
+        status:
+          type: string
+          example: "active"
+
+        name:
+          type: string
+          example: "Demo Medicine PK"
+
+        names:
+          type: array
+          items:
+            type: string
+          example: []
+
+        product_type:
+          type: string
+          example: "medication"
+
+        is_instance_level:
+          type: boolean
+          example: false
+
+        slug:
+          type: string
+          example: "f-5e971c0e-22d8-494a-a231-2b10c5938140-demo-medicine-pk"
+
+        slug_config:
+          type: object
+          properties:
+            facility:
+              type: string
+              format: uuid
+              example: "5e971c0e-22d8-494a-a231-2b10c5938140"
+
+            slug_value:
+              type: string
+              example: "demo-medicine-pk"
+
+        base_unit:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "{tbl}"
+
+            system:
+              type: string
+              format: uri
+              example: "http://unitsofmeasure.org"
+
+            display:
+              type: string
+              example: "tablets"
+
+        category:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              example: "60863450-7be1-4464-9c20-3049c369136e"
+
+            title:
+              type: string
+              example: "Medicines"
+
+            description:
+              type: string
+              nullable: true
+              example: null
+
+        code:
+          type: object
+          additionalProperties: true
+          example: {}
+
+        definitional:
+          type: object
+          additionalProperties: true
+          example: {}
+
+        storage_guidelines:
+          type: array
+          items:
+            type: object
+          example: []
 
     EaushadhiInwardResponse:
       type: array
-      description: Array of inward items from eAushadi API
+      description: Array of inward items from eAushadhi API
       items:
         $ref: '#/components/schemas/EaushadhiInwardItem'
 
@@ -1856,3 +1960,5 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             error: "Internal server error occurred"
+
+    
