@@ -3,6 +3,7 @@ from django.shortcuts import HttpResponse
 from django.urls import path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
+from care_eaushadhi.api.viewsets.institute_mapping import InstituteMappingViewSet
 from care_eaushadhi.api.viewsets.inward_record import InwardRecordViewSet
 from care_eaushadhi.api.viewsets.initiate_inward_fetch import InitiateInwardFetchViewSet
 from care_eaushadhi.api.viewsets.product_mappings import ProductMappingViewSet
@@ -14,6 +15,12 @@ def healthy(request):
 
 
 router = DefaultRouter() if settings.DEBUG else SimpleRouter()
+
+router.register(
+    "institute-mappings",
+    InstituteMappingViewSet,
+    basename="eaushadhi_institute_mappings"
+)
 
 router.register(
     "inward-records",
