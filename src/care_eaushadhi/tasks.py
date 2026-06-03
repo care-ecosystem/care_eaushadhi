@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
     name="care_eaushadhi.tasks.fetch_inward_from_eaushadi",
     max_retries=settings.EAUSHADHI_API_RETRY_COUNT,
     default_retry_delay=5,
+    autoretry_for=(requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
 )
 def fetch_inward_from_eaushadi(
     self,
@@ -53,23 +57,52 @@ def fetch_inward_from_eaushadi(
     start_ms = int(time.time() * 1000)
 
     try:
-        logger.info("Calling EAushadhiService.fetch_from_eaushadhi for inward_date=%s", inward_date)
+        logger.info(
+            "Calling EAushadhiService.fetch_from_eaushadhi | inward_date=%s attempt=%s/%s",
+            inward_date, self.request.retries + 1, self.max_retries + 1
+        )
         response = EAushadhiService.fetch_from_eaushadhi(
             api_secret_key_code=institute_mapping.credentials_ref,
             inward_date=inward_date,
         )
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as exc:
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "Max retries exhausted for eAushadi fetch due to timeout | "
+                "facility=%s date=%s attempts=%s error=%s",
+                facility_id, inward_date, self.request.retries + 1, str(exc)
+            )
+
+            _mark_failed(
+                fetch_log, inward_record,
+                http_status_code=None,
+                error_code="TIMEOUT_ERROR",
+                error_detail=f"Connection/Read timeout after {self.request.retries + 1} attempts: {str(exc)}",
+                user=user
+            )
+            raise
+
+        # Use exponential backoff with jitter: 5, 15, 45 seconds
+        retry_countdown = 5 * (3 ** self.request.retries)
+
+        logger.warning(
+            "Timeout calling eAushadi API (attempt %s/%s), retrying in %ss | error=%s",
+            self.request.retries + 1, self.max_retries + 1, retry_countdown, type(exc).__name__,
+        )
+
+        raise self.retry(exc=exc, countdown=retry_countdown) from exc
     except requests.RequestException as exc:
         if self.request.retries >= self.max_retries:
             logger.error(
-                "Max retries exhausted for eAushadi fetch | facility=%s date=%s",
-                facility_id, inward_date
+                "Max retries exhausted for eAushadi fetch | facility=%s date=%s attempts=%s error=%s",
+                facility_id, inward_date, self.request.retries + 1, str(exc)
             )
 
             _mark_failed(
                 fetch_log, inward_record,
                 http_status_code=None,
                 error_code="NETWORK_ERROR",
-                error_detail=str(exc),
+                error_detail=f"Network error after {self.request.retries + 1} attempts: {str(exc)}",
                 user=user
             )
             raise
@@ -77,8 +110,8 @@ def fetch_inward_from_eaushadi(
         retry_countdown = 5 * (3 ** self.request.retries)
 
         logger.warning(
-            "Network error calling eAushadi API (attempt %s), retrying in %ss: %s",
-            self.request.retries + 1, retry_countdown, exc,
+            "Network error calling eAushadi API (attempt %s/%s), retrying in %ss | error_type=%s error=%s",
+            self.request.retries + 1, self.max_retries + 1, retry_countdown, type(exc).__name__, str(exc)
         )
 
         raise self.retry(exc=exc, countdown=retry_countdown) from exc
