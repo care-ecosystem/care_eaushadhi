@@ -32,6 +32,15 @@ class EAushadhiService:
             session.mount("https://", adapter)
             session.mount("http://", adapter)
 
+            # Configure proxy if provided
+            proxies = {}
+            if settings.EAUSHADHI_API_PROXY_HTTP:
+                proxies['http'] = settings.EAUSHADHI_API_PROXY_HTTP
+                logger.info("Using HTTP proxy: %s", settings.EAUSHADHI_API_PROXY_HTTP)
+            if settings.EAUSHADHI_API_PROXY_HTTPS:
+                proxies['https'] = settings.EAUSHADHI_API_PROXY_HTTPS
+                logger.info("Using HTTPS proxy: %s", settings.EAUSHADHI_API_PROXY_HTTPS)
+
             headers = {
                 'accept': 'application/json',
                 'content-type': 'application/json',
@@ -47,16 +56,20 @@ class EAushadhiService:
             read_timeout = settings.EAUSHADHI_API_READ_TIMEOUT
             timeout = (connect_timeout, read_timeout)
 
+            verify_ssl = settings.EAUSHADHI_API_VERIFY_SSL
+
             logger.info(
-                "Calling e-Aushadhi API | url=%s date=%s connect_timeout=%s read_timeout=%s",
-                url, inward_date_ddmmyyyy, connect_timeout, read_timeout
+                "Calling e-Aushadhi API | url=%s date=%s connect_timeout=%s read_timeout=%s verify_ssl=%s proxy=%s",
+                url, inward_date_ddmmyyyy, connect_timeout, read_timeout, verify_ssl, bool(proxies)
             )
 
             response = session.post(
                 url=url,
                 headers=headers,
                 json=payload,
-                timeout=timeout
+                timeout=timeout,
+                proxies=proxies if proxies else None,
+                verify=verify_ssl
             )
 
             logger.info(
