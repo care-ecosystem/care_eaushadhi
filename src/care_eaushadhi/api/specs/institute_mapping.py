@@ -16,22 +16,26 @@ class InstituteMappingListSpec(EMRResource):
     eaushadhi_institute_id: str | None = None
     schema_version: str | None = None
     credentials_ref: str | None = None
+    meta: dict | None = None
     supplier_mappings: list[dict] = []
     created_by: dict | None = None
     updated_by: dict | None = None
     created_date: datetime.datetime | None = None
     modified_date: datetime.datetime | None = None
 
+    def to_json(self):
+        return self.model_dump(mode="json")  # no exclude, so meta will show
+
     @classmethod
     def perform_extra_serialization(cls, mapping, obj):
         mapping["id"] = obj.external_id
         mapping["facility_id"] = obj.facility.external_id if obj.facility else None
+        mapping["meta"] = dict(obj.meta) if obj.meta else {}
         mapping["supplier_mappings"] = [
             InstituteSupplierMappingReadSpec.serialize(sm).to_json()
             for sm in obj.supplier_mappings.all()
         ]
         cls.serialize_audit_users(mapping, obj)
-
 
 class InstituteMappingRetrieveSpec(InstituteMappingListSpec):
     pass
