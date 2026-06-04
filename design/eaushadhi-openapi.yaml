@@ -1011,6 +1011,9 @@ components:
         credentials_ref:
           type: string
           nullable: true
+        meta:
+          type: object
+          nullable: true
 
     InstituteMapping:
       type: object
@@ -1037,6 +1040,9 @@ components:
         schema_version:
           type: string
           example: "1.0"
+        meta:
+          type: object
+          nullable: true
         credentials_ref:
           type: string
           nullable: true

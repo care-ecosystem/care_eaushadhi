@@ -22,3 +22,13 @@ class InstituteSupplierMappingReadSpec(EMRResource):
         mapping["supplier_id"] = obj.supplier.external_id if obj.supplier else None
         mapping["supplier_name"] = obj.supplier.name if obj.supplier else None
         cls.serialize_audit_users(mapping, obj)
+
+
+class InstituteSupplierMappingCreateSpec(EMRResource):
+    """Input spec for creating a supplier mapping."""
+    __model__ = EAushadhiInstituteSupplierMapping
+    __exclude__ = ["id", "created_by", "updated_by", "created_date", "modified_date", "deleted", "external_id", "history", "institute_mapping"]
+
+    supplier_id: UUID4
+    eaushadhi_warehouse_name: str
+    is_default: bool = False
