@@ -10,3 +10,6 @@ class Care_eaushadhiConfig(AppConfig):
 
     def ready(self):
         import care_eaushadhi.signals  # noqa F401
+        # Import tasks to register Celery tasks
+        import care_eaushadhi.tasks  # noqa: F401
+
