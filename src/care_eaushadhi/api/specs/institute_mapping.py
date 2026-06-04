@@ -10,6 +10,7 @@ from care_eaushadhi.api.specs.institute_supplier_mapping import InstituteSupplie
 class InstituteMappingListSpec(EMRResource):
     __model__ = EAushadhiInstituteMapping
     __exclude__ = []
+    __store_metadata__ = True
 
     id: UUID4 | None = None
     facility_id: UUID4 | None = None
@@ -18,6 +19,8 @@ class InstituteMappingListSpec(EMRResource):
     credentials_ref: str | None = None
     meta: dict | None = None
     supplier_mappings: list[dict] = []
+    disable_inward_date: bool = False      
+    manual_addition: bool = False          
     created_by: dict | None = None
     updated_by: dict | None = None
     created_date: datetime.datetime | None = None
@@ -25,7 +28,7 @@ class InstituteMappingListSpec(EMRResource):
 
     def to_json(self):
         return self.model_dump(mode="json")  # no exclude, so meta will show
-
+    
     @classmethod
     def perform_extra_serialization(cls, mapping, obj):
         mapping["id"] = obj.external_id
@@ -39,3 +42,11 @@ class InstituteMappingListSpec(EMRResource):
 
 class InstituteMappingRetrieveSpec(InstituteMappingListSpec):
     pass
+
+
+class InstituteMappingWriteSpec(EMRResource):
+    __model__ = EAushadhiInstituteMapping
+    __store_metadata__ = True
+
+    disable_inward_date: bool = False
+    manual_addition: bool = False

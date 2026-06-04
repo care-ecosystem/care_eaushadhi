@@ -5,11 +5,13 @@ from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
     EMRListMixin,
     EMRRetrieveMixin,
+    EMRUpdateMixin, 
 )
 
 from care_eaushadhi.api.specs.institute_mapping import (
     InstituteMappingListSpec,
     InstituteMappingRetrieveSpec,
+    InstituteMappingWriteSpec,
 )
 from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
 
@@ -27,14 +29,18 @@ class InstituteMappingFilters(filters.FilterSet):
 class InstituteMappingViewSet(
     EMRListMixin,
     EMRRetrieveMixin,
+    EMRUpdateMixin,
     EMRBaseViewSet,
 ):
     database_model = EAushadhiInstituteMapping
     pydantic_read_model = InstituteMappingListSpec
+    pydantic_write_model = InstituteMappingWriteSpec
     pydantic_retrieve_model = InstituteMappingRetrieveSpec
     filterset_class = InstituteMappingFilters
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     ordering_fields = ["created_date", "modified_date"]
+    def get_update_pydantic_model(self):  # ← add this
+        return self.pydantic_write_model
 
     def get_queryset(self):
         return (
@@ -50,5 +56,7 @@ class InstituteMappingViewSet(
                 "supplier_mappings__supplier",
                 "supplier_mappings__created_by",
                 "supplier_mappings__updated_by",
+                
             )
         )
+        
