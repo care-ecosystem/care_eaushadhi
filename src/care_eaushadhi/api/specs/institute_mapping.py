@@ -48,5 +48,17 @@ class InstituteMappingWriteSpec(EMRResource):
     __model__ = EAushadhiInstituteMapping
     __store_metadata__ = True
 
-    disable_inward_date: bool = False
-    manual_addition: bool = False
+    disable_inward_date: bool | None = None
+    manual_addition: bool | None = None
+
+    def de_serialize(self, obj=None, partial=False):
+        if not obj:
+            obj = self.__model__()
+        meta = getattr(obj, "meta", {}) or {}
+        if self.disable_inward_date is not None:
+            meta["disable_inward_date"] = self.disable_inward_date
+        if self.manual_addition is not None:
+            meta["manual_addition"] = self.manual_addition
+        obj.meta = meta
+        obj.save()
+        return obj
