@@ -5,7 +5,7 @@ from care.emr.resources.base import EMRResource
 
 from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord, SyncStatus
 from care_eaushadhi.api.specs.inward_record_item import InwardRecordItemReadSpec
-from care_eaushadhi.api.specs.inward_record_item_delivery import InwardRecordItemDeliveryReadSpec
+from care_eaushadhi.api.specs.inward_record_delivery import InwardRecordDeliveryReadSpec
 
 
 class InwardRecordListSpec(EMRResource):
@@ -54,6 +54,6 @@ class InwardRecordRetrieveSpec(InwardRecordListSpec):
             for item in obj.items.prefetch_related("item_deliveries").all()
         ]
         mapping["deliveries"] = [
-            InwardRecordItemDeliveryReadSpec.serialize(d).to_json()
+            InwardRecordDeliveryReadSpec.serialize(d).to_json()
             for d in obj.deliveries.all()
         ]
