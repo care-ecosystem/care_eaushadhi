@@ -1,26 +1,30 @@
+from django.contrib.postgres.search import TrigramSimilarity
+from django.db import IntegrityError
 from django.utils import timezone
 
-from django.db import IntegrityError
-
 from rest_framework import status
-from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
+from rest_framework.response import Response
 
 from care.emr.api.viewsets.base import (
+    EMRBaseViewSet,
     EMRCreateMixin,
     EMRListMixin,
     EMRUpdateMixin,
-    EMRBaseViewSet,
 )
+from care.emr.models.product_knowledge import ProductKnowledge
+from care.facility.models.facility import Facility
+from care.utils.shortcuts import get_object_or_404
 
-from care_eaushadhi.models.eaushadhi_product_mapping import (
-    EAushadhiProductMapping,
-)
 from care_eaushadhi.api.specs.product_mappings import (
     ProductMappingCreateSpec,
     ProductMappingReadSpec,
-    ProductMappingUpdateSpec
-    )
+    ProductMappingUpdateSpec,
+)
+from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
+from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping
+from care_eaushadhi.settings import plugin_settings as settings
 
 
 class ProductMappingViewSet(
@@ -115,3 +119,98 @@ class ProductMappingViewSet(
                 status=status.HTTP_409_CONFLICT,
             )
 
+
+
+    @action(detail=False, methods=["get"])
+    def search(self, request):
+        facility_id = request.query_params.get("facility_id")
+        eaushadhi_drug_id = request.query_params.get("eaushadhi_drug_id")
+
+        if not eaushadhi_drug_id:
+            return Response(
+                {
+                    "errors": [
+                        {
+                            "type": "validation_error",
+                            "msg": "eaushadhi_drug_id is required"
+                        }
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not facility_id:
+            return Response(
+                {
+                    "errors": [
+                        {
+                            "type": "validation_error",
+                            "msg": "facility_id is required"
+                        }
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        facility = get_object_or_404(Facility, external_id=facility_id)
+
+        existing_mappings = EAushadhiProductMapping.objects.filter(
+            facility=facility,
+            eaushadhi_drug_id=eaushadhi_drug_id
+        ).select_related(
+            "product_knowledge",
+            "product_knowledge__category",
+            "product_knowledge__facility",
+            "created_by",
+            "updated_by",
+        )
+
+        inward_record_item = EAushadhiInwardRecordItem.objects.filter(
+            drug_id=eaushadhi_drug_id
+        ).order_by(
+            "-receipt_date",
+            "-created_date"
+        ).first()
+
+        similar_product_knowledges = []
+
+        if inward_record_item:
+            eaushadhi_drug_name = inward_record_item.drug_name
+            similarity_threshold = settings.SIMILARITY_THRESHOLD
+
+            similar_product_knowledges = ProductKnowledge.objects.filter(
+                facility=facility
+            ).annotate(
+                similarity=TrigramSimilarity('name', eaushadhi_drug_name)
+            ).filter(
+                similarity__gt=similarity_threshold
+            ).order_by('-similarity').select_related(
+                "category",
+                "facility"
+            )
+
+        results = []
+        processed_product_knowledge_ids = set()
+
+        for mapping in existing_mappings:
+            results.append(ProductMappingReadSpec.serialize(mapping).to_json())
+            processed_product_knowledge_ids.add(mapping.product_knowledge_id)
+
+        for pk in similar_product_knowledges:
+            if pk.id not in processed_product_knowledge_ids:
+                preview_mapping = EAushadhiProductMapping(
+                    facility=facility,
+                    eaushadhi_drug_id=eaushadhi_drug_id,
+                    eaushadhi_drug_name=eaushadhi_drug_name,
+                    product_knowledge=pk,
+                    usage_count=0,
+                    last_used_date=None,
+                    created_by=request.user,
+                    updated_by=request.user,
+                )
+                results.append(ProductMappingReadSpec.serialize(preview_mapping).to_json())
+                processed_product_knowledge_ids.add(pk.id)
+
+        return Response({
+            "results": results
+        })
