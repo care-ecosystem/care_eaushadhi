@@ -132,7 +132,7 @@ class ProductMappingViewSet(
                     "errors": [
                         {
                             "type": "validation_error",
-                            "msg": "eaushadhi_drug_name is required"
+                            "msg": "eaushadhi_drug_id is required"
                         }
                     ]
                 },
