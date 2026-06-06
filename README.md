@@ -1,6 +1,6 @@
 # Care eAushadhi Backend Plugin
 
-[![Version](https://img.shields.io/badge/version-1.0.0--BETA-blue.svg)](https://github.com/ohcnetwork/care_eaushadhi)
+[![Version](https://img.shields.io/badge/version-1.0.0--BETA-blue.svg)](https://github.com/care-ecosystem/care_eaushadhi)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-4.2%2B-green.svg)](https://www.djangoproject.com/)
@@ -14,7 +14,7 @@ Care eAushadhi is a backend plugin for the CARE platform to integrate with India
 
 - 📐 **Tech & Product Design**: [Design Documentation](https://care-ecosystem.github.io/Designs/features/eaushadhi-v2/index.html)
 - 🖥️ **Frontend Plugin**: [care_eaushadhi_fe](https://github.com/care-ecosystem/care_eaushadhi_fe)
-- 🐛 **Report Issues**: [GitHub Issues](https://github.com/ohcnetwork/care_eaushadhi/issues)
+- 🐛 **Report Issues**: [GitHub Issues](https://github.com/care-ecosystem/care_eaushadhi/issues)
 - 📖 **CARE Platform**: [care.ohc.network](https://care.ohc.network)
 - 🏢 **eGov Foundation**: [egov.org.in](https://egov.org.in)
 - 📧 **Contact**: [jagan.kumar@egovernments.org](mailto:jagan.kumar@egovernments.org)
@@ -96,7 +96,7 @@ from plugs.plug import Plug
 
 care_eaushadhi_plug = Plug(
     name="care_eaushadhi",
-    package_name="git+https://github.com/ohcnetwork/care_eaushadhi.git",
+    package_name="git+https://github.com/care-ecosystem/care_eaushadhi.git",
     version="@main",
     configs={
         # eAushadhi API Configuration (Karnataka-specific)
@@ -131,7 +131,7 @@ manager = PlugManager(plugs)
 
 2. **Clone the plugin inside CARE**:
    ```bash
-   git clone https://github.com/ohcnetwork/care_eaushadhi.git
+   git clone https://github.com/care-ecosystem/care_eaushadhi.git
    ```
 
 3. **Configure the plugin in `plug_config.py`**:
@@ -404,7 +404,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for de
 ## Support
 
 For issues and questions:
-- **GitHub Issues**: [https://github.com/ohcnetwork/care_eaushadhi/issues](https://github.com/ohcnetwork/care_eaushadhi/issues)
+- **GitHub Issues**: [https://github.com/care-ecosystem/care_eaushadhi/issues](https://github.com/care-ecosystem/care_eaushadhi/issues)
 - **CARE Community**: [care.ohc.network](https://care.ohc.network)
 - **Email Support**: [jagan.kumar@egovernments.org](mailto:jagan.kumar@egovernments.org)
 
