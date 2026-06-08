@@ -1,0 +1,26 @@
+name: Trigger CARE Backend Build
+
+on:
+  push:
+    branches: [main, develop]
+    # No paths restriction - triggers on ANY change
+
+jobs:
+  trigger-backend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger CARE Backend Docker Build
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CARE_REPO_DISPATCH_TOKEN }}
+          repository: care-ecosystem/care
+          event-type: eaushadhi-plugin-updated
+          client-payload: |
+            {
+              "plugin": "care_eaushadhi",
+              "ref": "${{ github.ref }}",
+              "sha": "${{ github.sha }}",
+              "repository": "${{ github.repository }}",
+              "triggered_by": "${{ github.actor }}",
+              "event_name": "${{ github.event_name }}"
+            }
