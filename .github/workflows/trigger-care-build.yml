@@ -15,12 +15,4 @@ jobs:
           token: ${{ secrets.CARE_REPO_DISPATCH_TOKEN }}
           repository: care-ecosystem/care
           event-type: eaushadhi-plugin-updated
-          client-payload: |
-            {
-              "plugin": "care_eaushadhi",
-              "ref": "${{ github.ref }}",
-              "sha": "${{ github.sha }}",
-              "repository": "${{ github.repository }}",
-              "triggered_by": "${{ github.actor }}",
-              "event_name": "${{ github.event_name }}"
-            }
+          client-payload: '{"plugin": "care_eaushadhi", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
