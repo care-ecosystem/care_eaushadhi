@@ -71,7 +71,7 @@ class InitiateInwardFetchViewSet(GenericViewSet):
 
         facility = get_object_or_404(Facility, external_id=facility_id)
 
-        # self.authorize_fetch(facility=facility)
+        self.authorize_fetch(facility=facility)
 
         _ = get_object_or_404(
             EAushadhiInstituteMapping,
