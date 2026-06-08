@@ -10,9 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger CARE Backend Docker Build
+        id: dispatch
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.CARE_REPO_DISPATCH_TOKEN }}
           repository: care-ecosystem/care
           event-type: eaushadhi-plugin-updated
           client-payload: '{"plugin": "care_eaushadhi", "ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+
+      - name: Verify dispatch sent
+        run: |
+          echo "Dispatch event sent successfully"
+          echo "Target repository: care-ecosystem/care"
+          echo "Event type: eaushadhi-plugin-updated"
+          echo "Triggered from: ${{ github.ref }}"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo ""
+          echo "Check for workflow run at:"
+          echo "https://github.com/care-ecosystem/care/actions"
+          echo ""
+          echo "Note: It may take 1-2 minutes for the workflow to appear"
