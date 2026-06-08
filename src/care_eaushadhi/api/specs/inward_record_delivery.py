@@ -20,5 +20,11 @@ class InwardRecordDeliveryReadSpec(EMRResource):
     @classmethod
     def perform_extra_serialization(cls, mapping, obj):
         mapping["id"] = obj.external_id
-        mapping["inward_record_id"] = obj.inward_record.external_id
+
+        if obj.inward_record:
+            mapping["inward_record_id"] = obj.inward_record.external_id
+
+        if obj.delivery_order:
+            mapping["delivery_order_id"] = obj.delivery_order.external_id
+
         cls.serialize_audit_users(mapping, obj)
