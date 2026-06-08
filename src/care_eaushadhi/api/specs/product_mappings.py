@@ -72,22 +72,8 @@ class ProductMappingReadSpec(EMRResource):
         mapping["created_date"] = obj.created_date.isoformat() if obj.created_date else None
         mapping["modified_date"] = obj.modified_date.isoformat() if obj.modified_date else None
 
-        if obj.created_by:
-            mapping["created_by"] = {
-                "id": str(obj.created_by.external_id),
-                "username": obj.created_by.username,
-                "first_name": obj.created_by.first_name,
-                "last_name": obj.created_by.last_name,
-                "email": obj.created_by.email,
-            }
-        if obj.updated_by:
-            mapping["updated_by"] = {
-                "id": str(obj.updated_by.external_id),
-                "username": obj.updated_by.username,
-                "first_name": obj.updated_by.first_name,
-                "last_name": obj.updated_by.last_name,
-                "email": obj.updated_by.email,
-            }
+        # Use standardized audit user serialization method
+        cls.serialize_audit_users(mapping, obj)
 
 class ProductMappingUpdateSpec(EMRResource):
     __model__ = EAushadhiProductMapping
