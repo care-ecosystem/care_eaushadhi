@@ -5,6 +5,7 @@ from django.db.models import FloatField, Q
 from django.db.models.functions import Greatest
 
 from care.emr.models.product_knowledge import ProductKnowledge
+from care_eaushadhi.settings import plugin_settings as settings
 
 # Maps keywords in eAushadhi drug names to SNOMED display substrings
 # used in ProductKnowledge.definitional["dosage_form"]["display"].
@@ -29,9 +30,12 @@ DOSAGE_FORM_MAP = {
 }
 
 _FORM_STOP = {
+    # dosage forms
     "tablet", "tablets", "capsule", "capsules", "injection", "infusion",
     "suspension", "syrup", "cream", "gel", "ointment", "eye", "ear",
     "oral", "drops", "powder", "solution", "for", "with",
+    # patient / dose descriptors — not part of the drug substance name
+    "pediatric", "paediatric", "neonatal", "adult", "forte", "junior",
 }
 
 
@@ -112,15 +116,25 @@ def get_fuzzy_suggestions(drug_name: str, facility, limit: int = 10):
         Q(facility__isnull=True) | Q(facility=facility)
     )
 
-    def _ranked(qs):
+    def _ranked(qs, include_full_sim=False):
+        # full_sim compares the entire normalised eAushadhi name (including form
+        # and strength) against CARE names. Within a form-filtered result set
+        # this creates false positives: "oral suspension 250 mg/5 ml" shares
+        # trigrams with every suspension product regardless of drug substance.
+        # Only enable full_sim in the fallback where no form filter is applied.
+        annotations = {
+            "generic_sim": TrigramSimilarity("name", generic_name),
+            "alt_sim": TrigramSimilarity("names_cache", generic_name),
+        }
+        greatest_inputs = ["generic_sim", "alt_sim"]
+        if include_full_sim:
+            annotations["full_sim"] = TrigramSimilarity("name", normalized)
+            greatest_inputs.append("full_sim")
+
         return list(
-            qs.annotate(
-                generic_sim=TrigramSimilarity("name", generic_name),
-                full_sim=TrigramSimilarity("name", normalized),
-                alt_sim=TrigramSimilarity("names_cache", generic_name),
-                similarity=Greatest("generic_sim", "full_sim", "alt_sim", output_field=FloatField()),
-            )
-            .filter(similarity__gt=0.3)
+            qs.annotate(**annotations)
+            .annotate(similarity=Greatest(*greatest_inputs, output_field=FloatField()))
+            .filter(similarity__gt=settings.SIMILARITY_THRESHOLD)
             .order_by("-similarity")
             .select_related("category", "facility")
             [:limit]
@@ -130,10 +144,10 @@ def get_fuzzy_suggestions(drug_name: str, facility, limit: int = 10):
         form_q = Q()
         for display in dosage_form:
             form_q |= Q(definitional__dosage_form__display__icontains=display)
-        results = _ranked(base_qs.filter(form_q))
+        results = _ranked(base_qs.filter(form_q), include_full_sim=False)
         if results:
             return results
         # Form-filtered search found nothing — fall back to all forms so the
         # pharmacist can still see the closest drug-substance match.
 
-    return _ranked(base_qs)
+    return _ranked(base_qs, include_full_sim=True)
