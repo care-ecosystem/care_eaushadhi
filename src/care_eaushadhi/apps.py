@@ -9,7 +9,14 @@ class Care_eaushadhiConfig(AppConfig):
     verbose_name = _("Care_eaushadhi")
 
     def ready(self):
-        import care_eaushadhi.signals  # noqa F401
-        # Import tasks to register Celery tasks
-        import care_eaushadhi.tasks  # noqa: F401
+        import care_eaushadhi.signals       # noqa F401
+        import care_eaushadhi.tasks         # noqa F401
 
+        # Register permission so it syncs to DB and appears in UI
+        from care.security.permissions.base import PermissionController
+        from care_eaushadhi.security.EAushadhiPermissions import EAushadhiPermissions
+
+        PermissionController.register_permission_handler(EAushadhiPermissions)
+
+        # Register authorization handler
+        import care_eaushadhi.security.EAushadhiAccess  # noqa F401
