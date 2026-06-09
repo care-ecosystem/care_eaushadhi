@@ -1,6 +1,7 @@
 from decimal import Decimal
 import time
 import logging
+import json
 from datetime import date
 
 from celery import shared_task
@@ -144,7 +145,7 @@ def fetch_inward_from_eaushadi(
                 fetch_log, inward_record,
                 http_status_code=status_code,
                 error_code="HTTP_ERROR",
-                error_detail=f"Unexpected status code: {status_code}",
+                error_detail=json.dumps(response),
                 user=user
             )
             return
@@ -159,7 +160,7 @@ def fetch_inward_from_eaushadi(
                 fetch_log, inward_record,
                 http_status_code=status_code,
                 error_code="UNEXPECTED_RESPONSE_SHAPE",
-                error_detail=f"Expected list, got {type(data).__name__}: {str(data)[:200]}",
+                error_detail=json.dumps(response),
                 user=user
             )
             return
@@ -295,6 +296,7 @@ def fetch_inward_from_eaushadi(
             fetch_log.total_items_in_response = len(data)
             fetch_log.retry_count = self.request.retries
             fetch_log.updated_by = user
+            fetch_log.response_payload = response
 
             fetch_log.save(
                 update_fields=[
@@ -304,6 +306,7 @@ def fetch_inward_from_eaushadi(
                     "total_items_in_response",
                     "retry_count",
                     "updated_by",
+                    "response_payload"
                 ]
             )
 
