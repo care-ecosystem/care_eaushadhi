@@ -113,7 +113,7 @@ DEFAULTS = {
     "EAUSHADHI_API_VERIFY_SSL": True,
     "EAUSHADHI_API_PROXY_HTTP": "",
     "EAUSHADHI_API_PROXY_HTTPS": "",
-    "SIMILARITY_THRESHOLD": 0.2
+    "SIMILARITY_THRESHOLD": 0.3
 }
 
 plugin_settings = PluginSettings(

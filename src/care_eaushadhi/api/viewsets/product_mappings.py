@@ -1,6 +1,6 @@
-from django.contrib.postgres.search import TrigramSimilarity
 from django.db import IntegrityError
 from django.utils import timezone
+import logging
 
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,8 +13,8 @@ from care.emr.api.viewsets.base import (
     EMRListMixin,
     EMRUpdateMixin,
 )
-from care.emr.models.product_knowledge import ProductKnowledge
 from care.facility.models.facility import Facility
+from care.security.authorization import AuthorizationController
 from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.api.specs.product_mappings import (
@@ -22,9 +22,11 @@ from care_eaushadhi.api.specs.product_mappings import (
     ProductMappingReadSpec,
     ProductMappingUpdateSpec,
 )
+from care_eaushadhi.fuzzy_matching import get_fuzzy_suggestions
 from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
 from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping
-from care_eaushadhi.settings import plugin_settings as settings
+
+logger = logging.getLogger(__name__)
 
 
 class ProductMappingViewSet(
@@ -92,7 +94,6 @@ class ProductMappingViewSet(
             )
         return Response(self.handle_update(instance, request.data))
 
-
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
@@ -128,27 +129,13 @@ class ProductMappingViewSet(
 
         if not eaushadhi_drug_id:
             return Response(
-                {
-                    "errors": [
-                        {
-                            "type": "validation_error",
-                            "msg": "eaushadhi_drug_id is required"
-                        }
-                    ]
-                },
+                {"errors": [{"type": "validation_error", "msg": "eaushadhi_drug_id is required"}]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not facility_id:
             return Response(
-                {
-                    "errors": [
-                        {
-                            "type": "validation_error",
-                            "msg": "facility_id is required"
-                        }
-                    ]
-                },
+                {"errors": [{"type": "validation_error", "msg": "facility_id is required"}]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -156,10 +143,8 @@ class ProductMappingViewSet(
 
         existing_mappings = EAushadhiProductMapping.objects.filter(
             facility=facility,
-            eaushadhi_drug_id=eaushadhi_drug_id
-        ).order_by(
-            '-usage_count'
-        ).select_related(
+            eaushadhi_drug_id=eaushadhi_drug_id,
+        ).order_by("-usage_count").select_related(
             "product_knowledge",
             "product_knowledge__category",
             "product_knowledge__facility",
@@ -167,52 +152,48 @@ class ProductMappingViewSet(
             "updated_by",
         )
 
-        inward_record_item = EAushadhiInwardRecordItem.objects.filter(
-            drug_id=eaushadhi_drug_id
-        ).order_by(
-            "-receipt_date",
-            "-created_date"
-        ).first()
-
-        similar_product_knowledges = []
-
-        if inward_record_item:
-            eaushadhi_drug_name = inward_record_item.drug_name
-            similarity_threshold = settings.SIMILARITY_THRESHOLD
-
-            similar_product_knowledges = ProductKnowledge.objects.filter(
-                facility=facility
-            ).annotate(
-                similarity=TrigramSimilarity('name', eaushadhi_drug_name)
-            ).filter(
-                similarity__gt=similarity_threshold
-            ).order_by('-similarity').select_related(
-                "category",
-                "facility"
-            )
-
         results = []
         processed_product_knowledge_ids = set()
 
         for mapping in existing_mappings:
-            results.append(ProductMappingReadSpec.serialize(mapping).to_json())
+            data = ProductMappingReadSpec.serialize(mapping).to_json()
+            results.append(data)
             processed_product_knowledge_ids.add(mapping.product_knowledge_id)
 
-        for pk in similar_product_knowledges:
-            if pk.id not in processed_product_knowledge_ids:
+        inward_record_item = EAushadhiInwardRecordItem.objects.filter(
+            drug_id=eaushadhi_drug_id,
+        ).order_by("-receipt_date", "-created_date").first()
+
+        if inward_record_item:
+            drug_name = inward_record_item.drug_name
+            logger.info(
+                "fuzzy search | drug_id=%s drug_name=%s",
+                eaushadhi_drug_id,
+                drug_name,
+            )
+            suggestions = get_fuzzy_suggestions(drug_name, facility)
+            for pk in suggestions:
+                if pk.id in processed_product_knowledge_ids:
+                    continue
                 preview_mapping = EAushadhiProductMapping(
                     facility=facility,
                     eaushadhi_drug_id=eaushadhi_drug_id,
-                    eaushadhi_drug_name=eaushadhi_drug_name,
+                    eaushadhi_drug_name=drug_name,
                     product_knowledge=pk,
                     usage_count=0,
                     last_used_date=None,
                     created_by=request.user,
                     updated_by=request.user,
                 )
-                results.append(ProductMappingReadSpec.serialize(preview_mapping).to_json())
+                data = ProductMappingReadSpec.serialize(preview_mapping).to_json()
+                results.append(data)
                 processed_product_knowledge_ids.add(pk.id)
 
-        return Response({
-            "results": results
-        })
+        existing_count = existing_mappings.count()
+        no_suggestions = len(results) == existing_count
+        can_write_product_knowledge = AuthorizationController.call(
+            "can_write_facility_product_knowledge", request.user, facility
+        )
+        can_create = no_suggestions and can_write_product_knowledge
+
+        return Response({"results": results, "can_create": can_create})
