@@ -12,6 +12,7 @@ from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRe
 class InwardRecordItemDeliveryStatus(models.TextChoices):
     ACTIVE = "ACTIVE"
     REVERSED = "REVERSED"
+    ACCEPTED = "ACCEPTED"
 
 class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
     inward_record_item = models.ForeignKey(
