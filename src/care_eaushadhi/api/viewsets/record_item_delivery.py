@@ -15,6 +15,7 @@ from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRe
 from care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwardRecordDelivery
 from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import (
     EAushadhiInwardRecordItemDelivery,
+    InwardRecordItemDeliveryStatus,
 )
 
 
@@ -111,4 +112,52 @@ class RecordItemDeliveryViewSet(GenericViewSet):
                 "modified_date": str(delivery.modified_date),
             },
             status=status.HTTP_201_CREATED,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        external_id = kwargs.get("pk")
+        delivery = get_object_or_404(EAushadhiInwardRecordItemDelivery, external_id=external_id)
+
+        quantity_received = request.data.get("quantity_received")
+        new_status = request.data.get("status")
+
+        errors = {}
+        if new_status is not None and new_status not in InwardRecordItemDeliveryStatus.values:
+            errors["status"] = [
+                f"Must be one of: {', '.join(InwardRecordItemDeliveryStatus.values)}"
+            ]
+        if errors:
+            raise ValidationError(errors)
+
+        updated = False
+        if quantity_received is not None:
+            delivery.quantity_received = quantity_received
+            updated = True
+        if new_status is not None:
+            delivery.status = new_status
+            updated = True
+
+        if updated:
+            delivery.updated_by = request.user
+            delivery.save()
+
+        return Response(
+            {
+                "id": str(delivery.external_id),
+                "quantity_received": str(delivery.quantity_received),
+                "status": delivery.status,
+                "inward_record_id": str(delivery.inward_record_delivery.inward_record.external_id),
+                "delivery_order_id": str(delivery.inward_record_delivery.delivery_order.external_id),
+                "facility_id": str(delivery.facility.external_id),
+                "updated_by": {
+                    "id": str(delivery.updated_by.external_id),
+                    "username": delivery.updated_by.username,
+                    "first_name": delivery.updated_by.first_name,
+                    "last_name": delivery.updated_by.last_name,
+                    "email": delivery.updated_by.email,
+                },
+                "created_date": str(delivery.created_date),
+                "modified_date": str(delivery.modified_date),
+            },
+            status=status.HTTP_200_OK,
         )
