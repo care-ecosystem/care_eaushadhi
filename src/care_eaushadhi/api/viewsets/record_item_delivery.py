@@ -119,10 +119,10 @@ class RecordItemDeliveryViewSet(GenericViewSet):
         delivery = get_object_or_404(EAushadhiInwardRecordItemDelivery, external_id=external_id)
 
         quantity_received = request.data.get("quantity_received")
-        status = request.data.get("status")
+        new_status = request.data.get("status")
 
         errors = {}
-        if status is not None and status not in InwardRecordItemDeliveryStatus.values:
+        if new_status is not None and new_status not in InwardRecordItemDeliveryStatus.values:
             errors["status"] = [
                 f"Must be one of: {', '.join(InwardRecordItemDeliveryStatus.values)}"
             ]
@@ -133,8 +133,8 @@ class RecordItemDeliveryViewSet(GenericViewSet):
         if quantity_received is not None:
             delivery.quantity_received = quantity_received
             updated = True
-        if status is not None:
-            delivery.status = status
+        if new_status is not None:
+            delivery.status = new_status
             updated = True
 
         if updated:
