@@ -10,9 +10,10 @@ from care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwa
 from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
 
 class InwardRecordItemDeliveryStatus(models.TextChoices):
-    ACTIVE = "ACTIVE"
-    REVERSED = "REVERSED"
     ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    SOURCE_REVERSED = "SOURCE_REVERSED"
+    ACCEPTED_OVERRIDE = "ACCEPTED_OVERRIDE"
 
 class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
     inward_record_item = models.ForeignKey(
@@ -54,7 +55,7 @@ class EAushadhiInwardRecordItemDelivery(EMRBaseModel):
     )
     status = models.CharField(
         choices=InwardRecordItemDeliveryStatus.choices,
-        default=InwardRecordItemDeliveryStatus.ACTIVE,
+        default=InwardRecordItemDeliveryStatus.ACCEPTED,
         max_length=20
     )
 
