@@ -1,8 +1,13 @@
-from django.db import transaction
+from django.utils import timezone
+from django.db import transaction, connection
 from django_filters import rest_framework as filters
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+from pydantic import ValidationError as PydanticValidationError
+import logging
+from uuid import UUID
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -21,8 +26,14 @@ from care_eaushadhi.api.specs.institute_mapping import (
     InstituteMappingRetrieveSpec,
     InstituteMappingUpdateSpec,
 )
+from care_eaushadhi.api.specs.institute_supplier_mapping import (
+    InstituteSupplierMappingReadSpec,
+    InstituteSupplierMappingCreateSpec,
+)
 from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
 from care_eaushadhi.models.eaushadhi_institute_supplier_mapping import EAushadhiInstituteSupplierMapping
+
+logger = logging.getLogger(__name__)
 
 
 class InstituteMappingFilters(filters.FilterSet):
@@ -50,6 +61,7 @@ class InstituteMappingViewSet(
     filterset_class = InstituteMappingFilters
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     ordering_fields = ["created_date", "modified_date"]
+    lookup_field = "external_id"
 
     def get_queryset(self):
         return (
@@ -89,7 +101,8 @@ class InstituteMappingViewSet(
             )
 
         # Validate all suppliers exist
-        supplier_ids = [sm.supplier_id for sm in (spec.supplier_mappings or [])]
+        supplier_ids = [sm.supplier_id for sm in (
+            spec.supplier_mappings or [])]
         if supplier_ids:
             suppliers = Organization.objects.filter(
                 external_id__in=supplier_ids,
@@ -205,3 +218,192 @@ class InstituteMappingViewSet(
             result.to_json(),
             status=status.HTTP_200_OK
         )
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path="supplier-mappings",
+        url_name="supplier-mappings"
+    )
+    def replace_supplier_mappings(self, request, *args, **kwargs):
+        """
+        ✅ Replace the full set of supplier mappings for an institute mapping.
+        
+        URL: PATCH /api/care_eaushadhi/institute-mappings/{external_id}/supplier-mappings/
+        
+        Supports both update and create:
+        - If 'id' is provided: UPDATE that record (restore if soft-deleted)
+        - If 'id' is omitted: CREATE new record
+        - Suppliers not in incoming list: soft-delete them
+        
+        Request format:
+        {
+            "supplier_mappings": [
+                {
+                    "id": "mapping-uuid",  # Optional - if provided, update this record
+                    "supplier_id": "org-uuid",
+                    "eaushadhi_warehouse_name": "Warehouse Name",
+                    "is_default": true
+                },
+                {
+                    // No 'id' field - will CREATE new record
+                    "supplier_id": "org-uuid-2",
+                    "eaushadhi_warehouse_name": "Another Warehouse",
+                    "is_default": false
+                }
+            ]
+        }
+        """
+        # Get the institute mapping using lookup_field (external_id)
+        institute_mapping = self.get_object()
+
+        supplier_mappings_data = request.data.get("supplier_mappings")
+        if supplier_mappings_data is None or not isinstance(supplier_mappings_data, list):
+            return Response(
+                {"error": "supplier_mappings must be a list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(supplier_mappings_data) == 0:
+            return Response(
+                {"error": "supplier_mappings list cannot be empty"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Parse and validate supplier mappings using pydantic specs
+        supplier_mappings = []
+        try:
+            for mapping_data in supplier_mappings_data:
+                spec = InstituteSupplierMappingCreateSpec(**mapping_data)
+                supplier_mappings.append(spec)
+        except PydanticValidationError as exc:
+            return Response(
+                {"error": "Invalid supplier mapping data", "details": exc.errors()},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate supplier_id uniqueness
+        supplier_ids = [sm.supplier_id for sm in supplier_mappings]
+        if len(supplier_ids) != len(set(supplier_ids)):
+            return Response(
+                {"error": "Duplicate supplier_id values are not allowed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate at most one default
+        if sum(1 for sm in supplier_mappings if sm.is_default) > 1:
+            return Response(
+                {"error": "At most one supplier_mapping may be marked is_default = true"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate all suppliers exist
+        suppliers = Organization.objects.filter(
+            external_id__in=supplier_ids,
+            org_type="product_supplier",
+            deleted=False,
+        )
+        if suppliers.count() != len(supplier_ids):
+            found_ids = {s.external_id for s in suppliers}
+            missing_ids = set(supplier_ids) - found_ids
+            return Response(
+                {"error": f"Supplier(s) not found: {missing_ids}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build lookup map: UUID → Organization
+        suppliers_by_id = {
+            supplier.external_id: supplier for supplier in suppliers
+        }
+
+        # Get existing mappings (only non-deleted)
+        existing_mappings = {
+            sm.supplier.external_id: sm
+            for sm in institute_mapping.supplier_mappings.filter(deleted=False).select_related("supplier")
+        }
+        existing_supplier_ids = set(existing_mappings.keys())
+        incoming_supplier_ids = set(supplier_ids)
+
+        # Build mapping of all records by external_id (including soft-deleted)
+        # This is used when spec.id is provided
+        # ✅ CRITICAL: Query directly from model manager to bypass prefetch_related filter!
+        all_mappings_by_external_id = {}
+        all_supplier_mappings = EAushadhiInstituteSupplierMapping._base_manager.filter(
+            institute_mapping_id=institute_mapping.id
+        )
+        for sm in all_supplier_mappings:
+            all_mappings_by_external_id[sm.external_id] = sm
+        
+        with transaction.atomic():
+            # ===== STEP 1: SOFT-DELETE SUPPLIERS NOT IN INCOMING LIST =====
+            for supplier_id in existing_supplier_ids - incoming_supplier_ids:
+                existing_mapping = existing_mappings[supplier_id]
+                existing_mapping.deleted = True
+                existing_mapping.updated_by = request.user
+                existing_mapping.save()
+
+            # ===== STEP 2: UPDATE OR CREATE SUPPLIER MAPPINGS =====
+            for spec in supplier_mappings:
+                logger.info(f"Processing spec: id={spec.id}, supplier_id={spec.supplier_id}")
+                
+                if spec.id:
+                    logger.info(f"Looking for mapping with id={spec.id} in all_mappings_by_external_id")
+                    if spec.id in all_mappings_by_external_id:
+                        # Found it (might be soft-deleted)
+                        mapping = all_mappings_by_external_id[spec.id]
+                        logger.info(f"Found existing mapping {spec.id}, updating...")
+                        mapping.supplier = suppliers_by_id[spec.supplier_id]
+                        mapping.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
+                        mapping.is_default = spec.is_default
+                        mapping.updated_by = request.user
+                        mapping.deleted = False  
+                        mapping.save()
+                        logger.info(f"Updated mapping {spec.id}, restored if was deleted")
+                    else:
+                        # Mapping doesn't exist, create it with the provided id
+                        logger.info(f"Mapping {spec.id} not found, creating new with this id")
+                        EAushadhiInstituteSupplierMapping.objects.create(
+                            institute_mapping=institute_mapping,
+                            supplier=suppliers_by_id[spec.supplier_id],
+                            external_id=spec.id,
+                            eaushadhi_warehouse_name=spec.eaushadhi_warehouse_name,
+                            is_default=spec.is_default,
+                            created_by=request.user,
+                            updated_by=request.user,
+                        )
+                else:
+                    if spec.supplier_id in existing_mappings:
+                        # Update existing by supplier_id
+                        existing_mapping = existing_mappings[spec.supplier_id]
+                        logger.info(f"Updating supplier {spec.supplier_id} (no id provided)")
+                        existing_mapping.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
+                        existing_mapping.is_default = spec.is_default
+                        existing_mapping.updated_by = request.user
+                        existing_mapping.deleted = False 
+                        existing_mapping.save()
+                        logger.info(f"Updated existing mapping for supplier {spec.supplier_id}")
+                    else:
+                        logger.info(f"Creating new supplier {spec.supplier_id} (no id provided)")
+                        EAushadhiInstituteSupplierMapping.objects.create(
+                            institute_mapping=institute_mapping,
+                            supplier=suppliers_by_id[spec.supplier_id],
+                            eaushadhi_warehouse_name=spec.eaushadhi_warehouse_name,
+                            is_default=spec.is_default,
+                            created_by=request.user,
+                            updated_by=request.user,
+                        )
+
+        institute_mapping = (
+            EAushadhiInstituteMapping.objects
+            .select_related("facility", "created_by", "updated_by")
+            .prefetch_related(
+                "supplier_mappings",
+                "supplier_mappings__supplier",
+                "supplier_mappings__created_by",
+                "supplier_mappings__updated_by",
+            )
+            .get(pk=institute_mapping.pk)
+        )
+
+        result = InstituteMappingRetrieveSpec.serialize(institute_mapping)        
+        return Response(result.to_json(), status=status.HTTP_200_OK)
