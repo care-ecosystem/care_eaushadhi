@@ -1,13 +1,15 @@
+from uuid import UUID
+
 from django.utils import timezone
 from django.db import transaction, connection
 from django_filters import rest_framework as filters
+
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+
 from pydantic import ValidationError as PydanticValidationError
-import logging
-from uuid import UUID
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -32,8 +34,6 @@ from care_eaushadhi.api.specs.institute_supplier_mapping import (
 )
 from care_eaushadhi.models.eaushadhi_institute_mapping import EAushadhiInstituteMapping
 from care_eaushadhi.models.eaushadhi_institute_supplier_mapping import EAushadhiInstituteSupplierMapping
-
-logger = logging.getLogger(__name__)
 
 
 class InstituteMappingFilters(filters.FilterSet):
@@ -295,28 +295,19 @@ class InstituteMappingViewSet(
         for sm in all_supplier_mappings:
             all_mappings_by_external_id[sm.external_id] = sm
 
-        logger.info(
-            f"Institute {institute_mapping.id}: total={len(all_mappings_by_external_id)}, active={len(existing_supplier_ids)}")
-
         with transaction.atomic():
             # ===== STEP 1: SOFT-DELETE SUPPLIERS NOT IN INCOMING LIST =====
             for supplier_id in existing_supplier_ids - incoming_supplier_ids:
                 mapping = existing_mappings[supplier_id]
-                logger.info(
-                    f"Soft-deleting supplier {supplier_id} (pk={mapping.id})")
                 mapping.deleted = True
                 mapping.updated_by = request.user
                 mapping.save()
 
             for spec in supplier_mappings:
-                logger.info(
-                    f"→ Processing: id={spec.id}, supplier_id={spec.supplier_id}")
 
                 if spec.id:
                     if spec.id in all_mappings_by_external_id:
                         mapping = all_mappings_by_external_id[spec.id]
-                        logger.info(
-                            f"  Updating mapping pk={mapping.id} (was_deleted={mapping.deleted})")
                         mapping.supplier = suppliers_by_id[spec.supplier_id]
                         mapping.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
                         mapping.is_default = spec.is_default
@@ -324,8 +315,6 @@ class InstituteMappingViewSet(
                         mapping.deleted = False
                         mapping.save()
                     else:
-                        logger.info(
-                            f"  Creating new mapping with id={spec.id}")
                         EAushadhiInstituteSupplierMapping.objects.create(
                             institute_mapping=institute_mapping,
                             supplier=suppliers_by_id[spec.supplier_id],
@@ -344,16 +333,12 @@ class InstituteMappingViewSet(
 
                     if existing_for_supplier:
                         # Found - restore and update
-                        logger.info(
-                            f"  Restoring mapping pk={existing_for_supplier.id} (was_deleted={existing_for_supplier.deleted})")
                         existing_for_supplier.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
                         existing_for_supplier.is_default = spec.is_default
                         existing_for_supplier.updated_by = request.user
                         existing_for_supplier.deleted = False
                         existing_for_supplier.save()
                     else:
-                        logger.info(
-                            f"  Creating new mapping (no existing found)")
                         EAushadhiInstituteSupplierMapping.objects.create(
                             institute_mapping=institute_mapping,
                             supplier=suppliers_by_id[spec.supplier_id],
