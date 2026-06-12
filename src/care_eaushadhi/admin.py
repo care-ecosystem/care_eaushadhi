@@ -196,7 +196,6 @@ class EAushadhiFetchLogAdmin(admin.ModelAdmin):
     readonly_fields = [
         'external_id',
         'facility',
-        'delivery_order',
         'fetch_status',
         'http_status_code',
         'inward_date',
@@ -205,11 +204,11 @@ class EAushadhiFetchLogAdmin(admin.ModelAdmin):
         'error_details_display',
         'created_date',
     ]
-    raw_id_fields = ['facility', 'delivery_order']
+    raw_id_fields = ['facility']
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('facility', 'delivery_order', 'inward_date')
+            'fields': ('facility', 'inward_date')
         }),
         ('Status', {
             'fields': ('fetch_status', 'http_status_code')
@@ -268,15 +267,12 @@ class EAushadhiInwardRecordAdmin(admin.ModelAdmin):
     search_fields = [
         'external_id',
         'facility__name',
-        'eaushadhi_warehouse_name',
     ]
     readonly_fields = [
         'external_id',
         'facility',
-        'eaushadhi_warehouse_name',
         'inward_date',
         'sync_status',
-        'raw_data_display',
         'items_current_count',
         'created_date',
         'modified_date',
@@ -285,14 +281,10 @@ class EAushadhiInwardRecordAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Basic Information', {
-            'fields': ('facility', 'eaushadhi_warehouse_name', 'inward_date', 'sync_status')
+            'fields': ('facility', 'inward_date', 'sync_status')
         }),
         ('Statistics', {
             'fields': ('items_current_count',)
-        }),
-        ('Raw Data', {
-            'fields': ('raw_data_display',),
-            'classes': ('collapse',)
         }),
         ('Audit Information', {
             'fields': ('external_id', 'created_date', 'modified_date'),
@@ -301,24 +293,10 @@ class EAushadhiInwardRecordAdmin(admin.ModelAdmin):
     )
 
     def items_count(self, obj):
-        """Display count of inward items."""
         return obj.items_current_count or 0
     items_count.short_description = 'Items'
 
-    def raw_data_display(self, obj):
-        """Display raw data in a readable format."""
-        if obj.raw_data:
-            import json
-            try:
-                formatted = json.dumps(obj.raw_data, indent=2)
-                return format_html('<pre>{}</pre>', formatted)
-            except:
-                return format_html('<pre>{}</pre>', str(obj.raw_data))
-        return '-'
-    raw_data_display.short_description = 'Raw Data (JSON)'
-
     def has_add_permission(self, request):
-        """Prevent manual creation of inward records."""
         return False
 
 
@@ -348,17 +326,16 @@ class EAushadhiInwardRecordItemAdmin(admin.ModelAdmin):
         'drug_name',
         'batch_no',
         'expiry_date',
-        'pack_size',
-        'pack_qty',
-        'unit_qty',
+        'unit_pack',
+        'quantity_received_current',
+        'quantity_in_units',
         'created_date',
         'modified_date',
     ]
     raw_id_fields = ['inward_record']
 
     def quantity(self, obj):
-        """Display combined quantity information."""
-        return f"{obj.pack_qty} packs × {obj.pack_size} = {obj.unit_qty} units"
+        return f"{obj.quantity_received_current} × {obj.unit_pack} = {obj.quantity_in_units} units"
     quantity.short_description = 'Quantity'
 
     def has_add_permission(self, request):
