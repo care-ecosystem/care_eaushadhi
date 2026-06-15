@@ -1,8 +1,10 @@
 from django.db import IntegrityError
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from care.security.authorization.base import AuthorizationController
 from care.utils.shortcuts import get_object_or_404
 from care.facility.models import Facility
 from care.emr.models.supply_delivery import DeliveryOrder
@@ -15,6 +17,14 @@ from care.emr.resources.user.spec import UserSpec
 
 
 class RecordDeliveryViewSet(GenericViewSet):
+
+    def _authorize_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_use_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
 
     def create(self, request, *args, **kwargs):
         inward_record_id = request.data.get("inward_record_id")
@@ -46,6 +56,8 @@ class RecordDeliveryViewSet(GenericViewSet):
         delivery_order = get_object_or_404(
             DeliveryOrder, external_id=delivery_order_id
         )
+
+        self._authorize_facility(facility)
 
         # facility isn't stored on the delivery; it lives on inward_record.
         # Validate the supplied facility actually owns this inward_record.

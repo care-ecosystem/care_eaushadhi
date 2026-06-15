@@ -4,7 +4,7 @@ import logging
 
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError as RestFrameworkValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError as RestFrameworkValidationError
 from rest_framework.response import Response
 
 from care.emr.api.viewsets.base import (
@@ -37,12 +37,37 @@ class ProductMappingViewSet(
 ):
     http_method_names = ["get", "post", "patch"]
 
+    def _authorize_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_use_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
+
     database_model = EAushadhiProductMapping
 
     pydantic_model = ProductMappingCreateSpec
     pydantic_read_model = ProductMappingReadSpec
     pydantic_update_model = ProductMappingUpdateSpec
     pydantic_retrieve_model = None
+
+    def authorize_create(self, instance):
+        if instance.facility_id:
+            facility = get_object_or_404(Facility, external_id=instance.facility_id)
+            self._authorize_facility(facility)
+        elif not self.request.user.is_superuser:
+            raise PermissionDenied(
+                "Only superusers can create global product mappings"
+            )
+
+    def authorize_update(self, request_obj, model_instance):
+        if model_instance.facility:
+            self._authorize_facility(model_instance.facility)
+        elif not self.request.user.is_superuser:
+            raise PermissionDenied(
+                "Only superusers can update global product mappings"
+            )
 
     def get_queryset(self):
         queryset = (
@@ -59,7 +84,9 @@ class ProductMappingViewSet(
         )
         facility_id = self.request.query_params.get("facility_id")
         if facility_id:
-            queryset = queryset.filter(facility__external_id=facility_id)
+            facility = get_object_or_404(Facility, external_id=facility_id)
+            self._authorize_facility(facility)
+            queryset = queryset.filter(facility=facility)
 
         # Filter by eaushadhi_drug_id
         eaushadhi_drug_id = self.request.query_params.get("eaushadhi_drug_id")
@@ -140,6 +167,7 @@ class ProductMappingViewSet(
             )
 
         facility = get_object_or_404(Facility, external_id=facility_id)
+        self._authorize_facility(facility)
 
         existing_mappings = EAushadhiProductMapping.objects.filter(
             facility=facility,

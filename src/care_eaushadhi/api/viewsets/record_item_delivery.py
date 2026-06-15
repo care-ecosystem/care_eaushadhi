@@ -1,10 +1,11 @@
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from care.security.authorization.base import AuthorizationController
 from care.utils.shortcuts import get_object_or_404
 from care.emr.models.supply_delivery import SupplyDelivery
 from care.emr.models.product import Product
@@ -20,6 +21,14 @@ from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import (
 
 
 class RecordItemDeliveryViewSet(GenericViewSet):
+
+    def _authorize_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_use_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
 
     def create(self, request, *args, **kwargs):
         record_item_id = request.data.get("record_item_id")
@@ -49,6 +58,7 @@ class RecordItemDeliveryViewSet(GenericViewSet):
             EAushadhiInwardRecordItem, external_id=record_item_id
         )
         facility = get_object_or_404(Facility, external_id=facility_id)
+        self._authorize_facility(facility)
         inward_record_delivery = get_object_or_404(
             EAushadhiInwardRecordDelivery, external_id=record_delivery_id
         )
@@ -117,6 +127,7 @@ class RecordItemDeliveryViewSet(GenericViewSet):
     def partial_update(self, request, *args, **kwargs):
         external_id = kwargs.get("pk")
         delivery = get_object_or_404(EAushadhiInwardRecordItemDelivery, external_id=external_id)
+        self._authorize_facility(delivery.facility)
 
         quantity_received = request.data.get("quantity_received")
         new_status = request.data.get("status")

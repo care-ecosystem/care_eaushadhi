@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import OrderingFilter
 
 from care.emr.api.viewsets.base import (
@@ -7,6 +7,9 @@ from care.emr.api.viewsets.base import (
     EMRListMixin,
     EMRRetrieveMixin,
 )
+from care.facility.models import Facility
+from care.security.authorization.base import AuthorizationController
+from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.api.specs.inward_record import (
     InwardRecordListSpec,
@@ -37,6 +40,17 @@ class InwardRecordViewSet(
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     ordering_fields = ["inward_date", "created_date", "modified_date"]
 
+    def _authorize_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_use_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
+
+    def authorize_retrieve(self, instance):
+        self._authorize_facility(instance.facility)
+
     def get_queryset(self):
         queryset = (
             super()
@@ -56,5 +70,7 @@ class InwardRecordViewSet(
                 raise ValidationError(
                     {"facility_id": ["This field is required"]}
                 )
-            return queryset.filter(facility__external_id=facility_id)
+            facility = get_object_or_404(Facility, external_id=facility_id)
+            self._authorize_facility(facility)
+            return queryset.filter(facility=facility)
         return queryset

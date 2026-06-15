@@ -6,6 +6,7 @@ from django_filters import rest_framework as filters
 
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
@@ -20,6 +21,7 @@ from care.emr.api.viewsets.base import (
 )
 from care.facility.models import Facility
 from care.emr.models.organization import Organization
+from care.security.authorization.base import AuthorizationController
 from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.api.specs.institute_mapping import (
@@ -63,8 +65,19 @@ class InstituteMappingViewSet(
     ordering_fields = ["created_date", "modified_date"]
     lookup_field = "external_id"
 
+    def _authorize_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_use_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
+
+    def authorize_retrieve(self, instance):
+        self._authorize_facility(instance.facility)
+
     def get_queryset(self):
-        return (
+        queryset = (
             super()
             .get_queryset()
             .select_related(
@@ -79,6 +92,13 @@ class InstituteMappingViewSet(
                 "supplier_mappings__updated_by",
             )
         )
+        if self.action == "list":
+            facility_id = self.request.query_params.get("facility_id")
+            if facility_id:
+                facility = get_object_or_404(Facility, external_id=facility_id)
+                self._authorize_facility(facility)
+                return queryset.filter(facility=facility)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """
@@ -94,6 +114,7 @@ class InstituteMappingViewSet(
 
         # Check if facility already has a mapping
         facility = get_object_or_404(Facility, external_id=spec.facility_id)
+        self._authorize_facility(facility)
         if EAushadhiInstituteMapping.objects.filter(facility=facility, deleted=False).exists():
             return Response(
                 {"error": "Institute mapping already exists for this facility"},
@@ -176,6 +197,7 @@ class InstituteMappingViewSet(
         """
         # Get the existing institute mapping
         instance = self.get_object()
+        self._authorize_facility(instance.facility)
 
         # Parse and validate input (all fields optional for PATCH)
         spec = InstituteMappingUpdateSpec(**request.data)
@@ -227,6 +249,7 @@ class InstituteMappingViewSet(
     )
     def replace_supplier_mappings(self, request, *args, **kwargs):
         institute_mapping = self.get_object()
+        self._authorize_facility(institute_mapping.facility)
 
         supplier_mappings_data = request.data.get("supplier_mappings")
         if supplier_mappings_data is None or not isinstance(supplier_mappings_data, list):
