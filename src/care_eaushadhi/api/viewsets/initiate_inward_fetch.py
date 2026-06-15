@@ -24,13 +24,16 @@ class InitiateInwardFetchRequestSpec(BaseModel):
     force_refresh: bool = False
 
 class InitiateInwardFetchViewSet(GenericViewSet):
-    def authorize_fetch(self, facility):
+    def _authorize_facility(self, facility):
         if not AuthorizationController.call(
-            "can_use_eaushadhi_integration",
-            self.request.user,
-            facility,
+            "can_use_eaushadhi_integration", self.request.user, facility
         ):
-            raise PermissionDenied("You are not authorized to initiate fetch")
+            raise PermissionDenied(
+                "You are not authorized to use eAushadhi plugin for this facility"
+            )
+
+    def authorize_fetch(self, facility):
+        self._authorize_facility(facility)
 
     # Overriding the default create API
     def create(self, request, *args, **kwargs):
