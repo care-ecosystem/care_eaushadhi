@@ -87,6 +87,10 @@ class ProductMappingViewSet(
             facility = get_object_or_404(Facility, external_id=facility_id)
             self._authorize_facility(facility)
             queryset = queryset.filter(facility=facility)
+        elif not self.request.user.is_superuser:
+            raise PermissionDenied(
+                "Only superusers can list global product mappings"
+            )
 
         # Filter by eaushadhi_drug_id
         eaushadhi_drug_id = self.request.query_params.get("eaushadhi_drug_id")

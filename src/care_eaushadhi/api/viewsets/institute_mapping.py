@@ -6,7 +6,7 @@ from django_filters import rest_framework as filters
 
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
@@ -94,10 +94,13 @@ class InstituteMappingViewSet(
         )
         if self.action == "list":
             facility_id = self.request.query_params.get("facility_id")
-            if facility_id:
-                facility = get_object_or_404(Facility, external_id=facility_id)
-                self._authorize_facility(facility)
-                return queryset.filter(facility=facility)
+            if not facility_id:
+                 raise ValidationError(
+                     {"facility_id": ["This field is required"]}
+                 )
+            facility = get_object_or_404(Facility, external_id=facility_id)
+            self._authorize_facility(facility)
+            return queryset.filter(facility=facility)
         return queryset
 
     def create(self, request, *args, **kwargs):
