@@ -184,6 +184,46 @@ def fetch_inward_from_eaushadi(
             institute_id, len(data), len(items_from_api),
         )
 
+        # ⚡⚡⚡ VALIDATOR TRIGGERED HERE ⚡⚡⚡
+        logger.info("🔍 Starting validation and mapping...")
+        deployment = settings.EAUSHADHI_DEPLOYMENT
+        
+        try:
+            context = {
+                'inward_date': inward_date,
+                'facility_id': str(facility_id),
+                'eaushadhi_institute_id': institute_id,
+            }
+            
+            mapped_items, validation_errors = EAushadhiService.process_eaushadhi_response(
+                raw_response=items_from_api,
+                context=context,
+                deployment=deployment
+            )
+            
+            logger.info(
+                "✓ Validation complete | valid=%d errors=%d",
+                len(mapped_items), len(validation_errors)
+            )
+            
+            if validation_errors:
+                logger.warning(f"⚠️  {len(validation_errors)} validation errors:")
+                for error in validation_errors[:3]:
+                    logger.warning(f"  - {error}")
+        
+        except Exception as e:
+            logger.exception("❌ Validator failed: %s", str(e))
+            _mark_failed(
+                fetch_log, inward_record,
+                http_status_code=status_code,
+                error_code="VALIDATOR_ERROR",
+                error_detail=str(e),
+                user=user
+            )
+            raise
+        
+        # Use validated items instead of raw API items
+        items_from_api = mapped_items
 
         with transaction.atomic():
             existing_items = EAushadhiInwardRecordItem.objects.filter(
@@ -198,20 +238,23 @@ def fetch_inward_from_eaushadi(
             api_keys = set()
             upsert_list = []
 
-            for api_item in items_from_api:
-                inward_no = api_item.get("inwardno")
-                drug_id = api_item.get("Drug_id")
-                batch_no = api_item.get("Batch_number")
-                manufactured_date = _parse_date(api_item.get("Mfg_date"))
-                expiry_date = _parse_date(api_item.get("Exp_date"))
-                receipt_date = _parse_date(api_item.get("Receipt_Date"))
-                unit_pack_raw = api_item.get("UnitPack", "")
+            for mapped_item in items_from_api:
+                # Extract from mapped/validated format
+                metadata = mapped_item.get("metadata", {})
+                
+                inward_no = mapped_item.get("eaushadhi_inwardno")
+                drug_id = metadata.get("drug_id")
+                batch_no = metadata.get("batch_number")
+                manufactured_date = _parse_date(metadata.get("mfg_date"))
+                expiry_date = _parse_date(metadata.get("exp_date"))
+                receipt_date = _parse_date(metadata.get("receipt_date"))
+                unit_pack_raw = mapped_item.get("unit_pack", "")
                 unit_pack = _parse_unit_pack(unit_pack_raw)
-                drug_name=api_item.get("Drug_name", "")
-                dose = api_item.get("Dose", "")
-                quantity_in_units = api_item.get("Quantity_In_Units", 0)
-                quantity_received_current = api_item.get("Quantity_In_Pack", 0)
-                warehouse_name = api_item.get("Warehouse_name", "")
+                drug_name = metadata.get("drug_name", "")
+                dose = metadata.get("dose", "")
+                quantity_in_units = mapped_item.get("quantity_in_units", 0)
+                quantity_received_current = mapped_item.get("quantity_in_pack", 0)
+                warehouse_name = metadata.get("warehouse_name", "")
 
 
                 key = ( inward_no, drug_id, batch_no )
