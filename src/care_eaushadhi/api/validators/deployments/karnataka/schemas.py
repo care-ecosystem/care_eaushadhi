@@ -121,10 +121,6 @@ class YesNo(str, Enum):
         return self is YesNo.YES
 
 
-# =========================================================================
-# Item model
-# =========================================================================
-
 class InventoryItem(BaseModel):
     """A single inwarded stock line item from Karnataka eAushadhi API."""
 
@@ -234,10 +230,6 @@ class InventoryItem(BaseModel):
         """Check if item has passed its expiry date."""
         return self.exp_date < date.today()
 
-
-# =========================================================================
-# Request / Response envelopes
-# =========================================================================
 
 class InwardRequest(BaseModel):
     """Request body for eAushadhi instinward endpoint."""

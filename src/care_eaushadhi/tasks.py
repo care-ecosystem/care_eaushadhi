@@ -165,14 +165,6 @@ def fetch_inward_from_eaushadi(
             )
             return
 
-        # ── 4c. Schema validation (wire in once validator exists) ─────────────────
-        # is_valid, error_info = validate_inward_response_schema(data)
-        # if not is_valid:
-        #     logger.warning("Schema validation failed: %s", error_info)
-        #     _mark_failed(fetch_log, inward_record, http_status_code=status_code,
-        #                  error_code="SCHEMA_VALIDATION_ERROR", error_detail=str(error_info))
-        #     return  # No retry — deterministic failure
-
 
         institute_id = institute_mapping.eaushadhi_institute_id
         items_from_api = [
@@ -184,7 +176,6 @@ def fetch_inward_from_eaushadi(
             institute_id, len(data), len(items_from_api),
         )
 
-        # ⚡⚡⚡ VALIDATOR TRIGGERED HERE ⚡⚡⚡
         logger.info("🔍 Starting validation and mapping...")
         deployment = settings.EAUSHADHI_DEPLOYMENT
         
@@ -208,8 +199,17 @@ def fetch_inward_from_eaushadi(
             
             if validation_errors:
                 logger.warning(f"⚠️  {len(validation_errors)} validation errors:")
-                for error in validation_errors[:3]:
-                    logger.warning(f"  - {error}")
+                error = validation_errors[0]
+                _mark_failed(
+                    fetch_log=fetch_log,
+                    inward_record=inward_record,
+                    http_status_code=status_code,
+                    error_code=error.get("error_code", "VALIDATION_ERROR"),
+                    error_detail=error.get("message"),
+                    user=user
+                )
+
+            return
         
         except Exception as e:
             logger.exception("❌ Validator failed: %s", str(e))
