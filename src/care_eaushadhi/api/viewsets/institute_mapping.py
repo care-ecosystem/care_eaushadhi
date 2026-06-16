@@ -94,13 +94,10 @@ class InstituteMappingViewSet(
         )
         if self.action == "list":
             facility_id = self.request.query_params.get("facility_id")
-            if not facility_id:
-                 raise ValidationError(
-                     {"facility_id": ["This field is required"]}
-                 )
-            facility = get_object_or_404(Facility, external_id=facility_id)
-            self._authorize_facility(facility)
-            return queryset.filter(facility=facility)
+            if facility_id:
+                facility = get_object_or_404(Facility, external_id=facility_id)
+                self._authorize_facility(facility)
+                return queryset.filter(facility=facility)
         return queryset
 
     def create(self, request, *args, **kwargs):
