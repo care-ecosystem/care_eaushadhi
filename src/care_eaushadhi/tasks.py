@@ -291,7 +291,7 @@ def fetch_inward_from_eaushadi(
                             unit_pack_raw=unit_pack_raw,
                             dose=dose,
                             quantity_in_units=quantity_in_units,
-                            quantity_received_initial=quantity_in_units,
+                            quantity_received_initial=quantity_received_current,
                             quantity_received_current=quantity_received_current,
                             warehouse_name=warehouse_name,
                             status=InwardRecordItemStatus.ACTIVE,
