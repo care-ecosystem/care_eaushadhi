@@ -74,7 +74,7 @@ class RecordItemDeliveryCreateSpec(EMRResource):
     facility_id: UUID4
     supply_delivery_id: UUID4 | None
     record_delivery_id: UUID4
-    product_id: UUID4 | None
+    product_id: UUID4
     product_knowledge_id: UUID4
     quantity_received: int | float
 

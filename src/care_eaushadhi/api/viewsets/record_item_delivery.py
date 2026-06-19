@@ -57,45 +57,45 @@ class RecordItemDeliveryViewSet(
                 "You are not authorized to use eAushadhi plugin for this facility"
             )
 
-    def _check_duplicate_record(self, instance):
+    # def _check_duplicate_record(self, instance):
 
-        try:
-            # Simply check if another active delivery exists for this record_item
-            existing = EAushadhiInwardRecordItemDelivery.objects.filter(
-                inward_record_item=instance.inward_record_item,
-                deleted=False
-            ).exclude(pk=instance.pk)
+    #     try:
+    #         # Simply check if another active delivery exists for this record_item
+    #         existing = EAushadhiInwardRecordItemDelivery.objects.filter(
+    #             inward_record_item=instance.inward_record_item,
+    #             deleted=False
+    #         ).exclude(pk=instance.pk)
 
-            if existing.exists():
-                return True
+    #         if existing.exists():
+    #             return True
 
-            return False
-        except (AttributeError, TypeError) as e:
-            return False
+    #         return False
+    #     except (AttributeError, TypeError) as e:
+    #         return False
 
     def perform_create(self, instance):
         self._authorize_facility(instance.facility)
         instance.created_by = self.request.user
         instance.updated_by = self.request.user
 
-        if self._check_duplicate_record(instance):
-            raise ConflictException(
-                "An active delivery already exists for this record_item"
-            )
+        # if self._check_duplicate_record(instance):
+        #     raise ConflictException(
+        #         "An active delivery already exists for this record_item"
+        #     )
 
         try:
             instance.save()
         except IntegrityError as exc:
-            constraint_name = getattr(
-                getattr(exc.__cause__, "diag", None),
-                "constraint_name",
-                None,
-            )
+            # constraint_name = getattr(
+            #     getattr(exc.__cause__, "diag", None),
+            #     "constraint_name",
+            #     None,
+            # )
 
-            if constraint_name and "inward_record_item" in constraint_name:
-                raise ConflictException(
-                    "An active delivery already exists for this record_item"
-                ) from exc
+            # if constraint_name and "inward_record_item" in constraint_name:
+            #     raise ConflictException(
+            #         "An active delivery already exists for this record_item"
+            #     ) from exc
 
             raise
 
