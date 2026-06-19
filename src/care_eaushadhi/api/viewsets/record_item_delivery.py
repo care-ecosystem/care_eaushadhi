@@ -1,174 +1,151 @@
 from django.db import IntegrityError
-from django.core.exceptions import ObjectDoesNotExist
+
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.exceptions import (
+    APIException,
+    PermissionDenied,
+    ValidationError,
+)
 
-from care.security.authorization.base import AuthorizationController
-from care.utils.shortcuts import get_object_or_404
-from care.emr.models.supply_delivery import SupplyDelivery
-from care.emr.models.product import Product
-from care.emr.models.product_knowledge import ProductKnowledge
+from care.emr.api.viewsets.base import (
+    EMRBaseViewSet,
+    EMRCreateMixin,
+    EMRUpdateMixin,
+)
 from care.facility.models import Facility
+from care.security.authorization.base import AuthorizationController
 
-from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
-from care_eaushadhi.models.eaushadhi_inward_record_delivery import EAushadhiInwardRecordDelivery
+from care_eaushadhi.api.specs.record_item_delivery import (
+    RecordItemDeliveryCreateSpec,
+    RecordItemDeliveryReadSpec,
+    RecordItemDeliveryUpdateSpec,
+)
 from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import (
     EAushadhiInwardRecordItemDelivery,
     InwardRecordItemDeliveryStatus,
 )
 
 
-class RecordItemDeliveryViewSet(GenericViewSet):
+class ConflictException(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "An active delivery already exists for this record_item"
+    default_code = "conflict"
+
+
+class RecordItemDeliveryViewSet(
+    EMRCreateMixin,
+    EMRUpdateMixin,
+    EMRBaseViewSet,
+):
+
+    http_method_names = ["post", "patch"]
+
+    database_model = EAushadhiInwardRecordItemDelivery
+
+    pydantic_model = RecordItemDeliveryCreateSpec
+    pydantic_retrieve_model = RecordItemDeliveryReadSpec
+    pydantic_update_model = RecordItemDeliveryUpdateSpec
 
     def _authorize_facility(self, facility):
         if not AuthorizationController.call(
-            "can_use_eaushadhi_integration", self.request.user, facility
+            "can_use_eaushadhi_integration",
+            self.request.user,
+            facility,
         ):
             raise PermissionDenied(
                 "You are not authorized to use eAushadhi plugin for this facility"
             )
 
-    def create(self, request, *args, **kwargs):
-        record_item_id = request.data.get("record_item_id")
-        facility_id = request.data.get("facility_id")
-        supply_delivery_id = request.data.get("supply_delivery_id")
-        record_delivery_id = request.data.get("record_delivery_id")
-        product_id = request.data.get("product_id")
-        product_knowledge_id = request.data.get("product_knowledge_id")
-        quantity_received = request.data.get("quantity_received")
+    def _check_duplicate_record(self, instance):
 
-        # Required field validation
-        required_fields = {
-            "record_item_id": record_item_id,
-            "facility_id": facility_id,
-            "supply_delivery_id": supply_delivery_id,
-            "record_delivery_id": record_delivery_id,
-            "product_id": product_id,
-            "product_knowledge_id": product_knowledge_id,
-            "quantity_received": quantity_received,
-        }
-        missing = {k: ["This field is required"] for k, v in required_fields.items() if not v}
-        if missing:
-            raise ValidationError(missing)
+        try:
+            # Simply check if another active delivery exists for this record_item
+            existing = EAushadhiInwardRecordItemDelivery.objects.filter(
+                inward_record_item=instance.inward_record_item,
+                deleted=False
+            ).exclude(pk=instance.pk)
 
-        # Resolve FKs
-        record_item = get_object_or_404(
-            EAushadhiInwardRecordItem, external_id=record_item_id
-        )
-        facility = get_object_or_404(Facility, external_id=facility_id)
-        self._authorize_facility(facility)
-        inward_record_delivery = get_object_or_404(
-            EAushadhiInwardRecordDelivery, external_id=record_delivery_id
-        )
-        product = get_object_or_404(Product, external_id=product_id)
-        product_knowledge = get_object_or_404(
-            ProductKnowledge, external_id=product_knowledge_id
-        )
+            if existing.exists():
+                return True
 
-        supply_delivery = None
-        if supply_delivery_id:
-            supply_delivery = get_object_or_404(
-                SupplyDelivery, external_id=supply_delivery_id
+            return False
+        except (AttributeError, TypeError) as e:
+            return False
+
+    def authorize_create(self, instance):
+        self._authorize_facility(instance.facility)
+
+    def perform_create(self, instance):
+        instance.created_by = self.request.user
+        instance.updated_by = self.request.user
+
+        if self._check_duplicate_record(instance):
+            raise ConflictException(
+                "An active delivery already exists for this record_item"
             )
 
         try:
-            delivery = EAushadhiInwardRecordItemDelivery.objects.create(
-                inward_record_item=record_item,
-                facility=facility,
-                supply_delivery=supply_delivery,
-                inward_record_delivery=inward_record_delivery,
-                product=product,
-                product_knowledge=product_knowledge,
-                quantity_received=quantity_received,
-                created_by=request.user,
-                updated_by=request.user,
-            )
-        except IntegrityError:
-            return Response(
-                {
-                    "errors": [
-                        {
-                            "type": "conflict",
-                            "msg": "An active delivery already exists for this record_item",
-                        }
-                    ]
-                },
-                status=status.HTTP_409_CONFLICT,
+            instance.save()
+        except IntegrityError as exc:
+            constraint_name = getattr(
+                getattr(exc.__cause__, "diag", None),
+                "constraint_name",
+                None,
             )
 
-        return Response(
-            {
-                "id": str(delivery.external_id),
-                "inward_record_id": str(delivery.inward_record_delivery.inward_record.external_id),
-                "delivery_order_id": str(delivery.inward_record_delivery.delivery_order.external_id),
-                "facility_id": str(delivery.facility.external_id),
-                "created_by": {
-                    "id": str(request.user.external_id),
-                    "username": request.user.username,
-                    "first_name": request.user.first_name,
-                    "last_name": request.user.last_name,
-                    "email": request.user.email,
-                },
-                "updated_by": {
-                    "id": str(request.user.external_id),
-                    "username": request.user.username,
-                    "first_name": request.user.first_name,
-                    "last_name": request.user.last_name,
-                    "email": request.user.email,
-                },
-                "created_date": str(delivery.created_date),
-                "modified_date": str(delivery.modified_date),
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            if constraint_name and "inward_record_item" in constraint_name:
+                raise ConflictException(
+                    "An active delivery already exists for this record_item"
+                ) from exc
+
+            raise ConflictException() from exc
+
+    def clean_update_data(self, request_data, keep_fields: set | None = None):
+        clean_data = super().clean_update_data(request_data, keep_fields)
+
+        allowed_fields = {"quantity_received", "status"}
+        unexpected = set(clean_data.keys()) - allowed_fields
+
+        if unexpected:
+            raise ValidationError(
+                f"Only quantity_received and status can be updated. "
+                f"Unexpected fields: {', '.join(unexpected)}"
+            )
+
+        return clean_data
+
+    def validate_data(self, instance, model_obj=None):
+
+        if hasattr(instance, "status") and instance.status is not None:
+            valid_statuses = [s[0]
+                              for s in InwardRecordItemDeliveryStatus.choices]
+            if instance.status not in valid_statuses:
+                raise ValidationError(
+                    {
+                        "status": [
+                            f"Must be one of: {', '.join(valid_statuses)}"
+                        ]
+                    }
+                )
 
     def partial_update(self, request, *args, **kwargs):
-        external_id = kwargs.get("pk")
-        delivery = get_object_or_404(EAushadhiInwardRecordItemDelivery, external_id=external_id)
-        self._authorize_facility(delivery.facility)
+        instance = self.get_object()
 
-        quantity_received = request.data.get("quantity_received")
-        new_status = request.data.get("status")
+        allowed_fields = {"quantity_received", "status"}
+        unexpected = set(request.data.keys()) - allowed_fields
 
-        errors = {}
-        if new_status is not None and new_status not in InwardRecordItemDeliveryStatus.values:
-            errors["status"] = [
-                f"Must be one of: {', '.join(InwardRecordItemDeliveryStatus.values)}"
-            ]
-        if errors:
-            raise ValidationError(errors)
+        if unexpected:
+            raise ValidationError(
+                f"Only quantity_received and status can be updated. "
+                f"Unexpected fields: {', '.join(unexpected)}"
+            )
 
-        updated = False
-        if quantity_received is not None:
-            delivery.quantity_received = quantity_received
-            updated = True
-        if new_status is not None:
-            delivery.status = new_status
-            updated = True
+        return Response(self.handle_update(instance, request.data))
 
-        if updated:
-            delivery.updated_by = request.user
-            delivery.save()
+    def authorize_update(self, request_obj, model_instance):
+        self._authorize_facility(model_instance.facility)
 
-        return Response(
-            {
-                "id": str(delivery.external_id),
-                "quantity_received": str(delivery.quantity_received),
-                "status": delivery.status,
-                "inward_record_id": str(delivery.inward_record_delivery.inward_record.external_id),
-                "delivery_order_id": str(delivery.inward_record_delivery.delivery_order.external_id),
-                "facility_id": str(delivery.facility.external_id),
-                "updated_by": {
-                    "id": str(delivery.updated_by.external_id),
-                    "username": delivery.updated_by.username,
-                    "first_name": delivery.updated_by.first_name,
-                    "last_name": delivery.updated_by.last_name,
-                    "email": delivery.updated_by.email,
-                },
-                "created_date": str(delivery.created_date),
-                "modified_date": str(delivery.modified_date),
-            },
-            status=status.HTTP_200_OK,
-        )
+    def perform_update(self, instance):
+        instance.updated_by = self.request.user
+        instance.save()
