@@ -97,7 +97,7 @@ class RecordItemDeliveryViewSet(
                     "An active delivery already exists for this record_item"
                 ) from exc
 
-            raise ConflictException() from exc
+            raise
 
     def clean_update_data(self, request_data, keep_fields: set | None = None):
         clean_data = super().clean_update_data(request_data, keep_fields)
@@ -129,16 +129,6 @@ class RecordItemDeliveryViewSet(
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-
-        allowed_fields = {"quantity_received", "status"}
-        unexpected = set(request.data.keys()) - allowed_fields
-
-        if unexpected:
-            raise ValidationError(
-                f"Only quantity_received and status can be updated. "
-                f"Unexpected fields: {', '.join(unexpected)}"
-            )
-
         return Response(self.handle_update(instance, request.data))
 
     def authorize_update(self, request_obj, model_instance):
