@@ -73,10 +73,8 @@ class RecordItemDeliveryViewSet(
         except (AttributeError, TypeError) as e:
             return False
 
-    def authorize_create(self, instance):
-        self._authorize_facility(instance.facility)
-
     def perform_create(self, instance):
+        self._authorize_facility(instance.facility)
         instance.created_by = self.request.user
         instance.updated_by = self.request.user
 
