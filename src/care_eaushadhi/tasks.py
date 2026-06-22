@@ -3,6 +3,7 @@ import time
 import logging
 import json
 from datetime import date
+from time import timezone
 
 from celery import shared_task
 from django.db import transaction
@@ -205,67 +206,104 @@ def fetch_inward_from_eaushadi(
                 logger.warning(f"⚠️  {len(validation_errors)} validation errors:")
                 error = validation_errors[0]
                 logger.error(f"❌ STOPPING: Validation error - {error.get('error_code')}: {error.get('message')}")
+                
+                # UPDATE INWARD RECORD META WITH ERROR CODE
+                inward_record.meta = {
+                    "error_code": error.get("error_code", "VALIDATION_ERROR"),
+                    "error_message": error.get("message", "Unknown validation error"),
+                    "error_details": error.get("details", {}),
+                    "failed_at": timezone.now().isoformat(),
+                }
+                inward_record.sync_status = SyncStatus.FAILED
+                inward_record.updated_by = user
+                inward_record.save(update_fields=["meta", "sync_status", "updated_by"])
+                
                 _mark_failed(
                     fetch_log=fetch_log,
                     inward_record=inward_record,
                     http_status_code=status_code,
                     error_code=error.get("error_code", "VALIDATION_ERROR"),
-                    error_detail=error.get("message"),
+                    error_detail=json.dumps(error.get("details", {})),
                     user=user
                 )
-                logger.error(f"❌ RETURNING NOW - Task will exit here")
                 return
-        
-        except Exception as e:
-            logger.exception("❌ Validator failed: %s", str(e))
-            _mark_failed(
-                fetch_log, inward_record,
-                http_status_code=status_code,
-                error_code="VALIDATOR_ERROR",
-                error_detail=str(e),
-                user=user
-            )
-            raise
-        
-        items_from_api = mapped_items
 
-        with transaction.atomic():
-            existing_items = EAushadhiInwardRecordItem.objects.filter(
-                inward_record=inward_record
-            ).select_for_update()
+            if not mapped_items:
+                logger.info("No items mapped from API response")
+                # Mark success even with 0 items
+                fetch_log.fetch_status = FetchStatus.SUCCESS
+                fetch_log.http_status_code = status_code
+                fetch_log.api_response_time_ms = elapsed_ms
+                fetch_log.total_items_in_response = len(data)
+                fetch_log.retry_count = self.request.retries
+                fetch_log.updated_by = user
+                fetch_log.response_payload = response
+
+                fetch_log.save(
+                    update_fields=[
+                        "fetch_status",
+                        "http_status_code",
+                        "api_response_time_ms",
+                        "total_items_in_response",
+                        "retry_count",
+                        "updated_by",
+                        "response_payload"
+                    ]
+                )
+
+                inward_record.sync_status = SyncStatus.FETCHED
+                inward_record.last_successful_fetch_log = fetch_log
+
+                if inward_record.items_initial_count is None:
+                    inward_record.items_initial_count = 0
+
+                inward_record.items_current_count = 0
+                inward_record.updated_by = user
+
+                inward_record.save(
+                    update_fields=[
+                        "sync_status",
+                        "last_successful_fetch_log",
+                        "items_initial_count",
+                        "items_current_count",
+                        "updated_by",
+                    ]
+                )
+                return
 
             existing_lookup = {
-                (item.inward_no, item.drug_id, item.batch_no): item
-                for item in existing_items
+                (item.inward_no, item.drug_id): item
+                for item in EAushadhiInwardRecordItem.objects.filter(
+                    inward_record=inward_record,
+                ).select_related("inward_record")
             }
 
             api_keys = set()
             upsert_list = []
 
-            for mapped_item in items_from_api:
-                metadata = mapped_item.get("metadata", {})
-                
-                inward_no = mapped_item.get("eaushadhi_inwardno")
-                drug_id = metadata.get("drug_id")
-                batch_no = metadata.get("batch_number")
-                manufactured_date = _parse_date(metadata.get("mfg_date"))
-                expiry_date = _parse_date(metadata.get("exp_date"))
-                receipt_date = _parse_date(metadata.get("receipt_date"))
-                unit_pack_raw = mapped_item.get("unit_pack", "")
+            for item in mapped_items:
+                inward_no = item.get("eaushadhi_inwardno")
+                drug_id = item.get("drug_id")
+                drug_name = item.get("drug_name")
+                batch_no = item.get("batch_number")
+                manufactured_date = _parse_date(item.get("mfg_date"))
+                expiry_date = _parse_date(item.get("exp_date"))
+                receipt_date = _parse_date(item.get("receipt_date"))
+                unit_pack_raw = item.get("unit_pack")
                 unit_pack = _parse_unit_pack(unit_pack_raw)
-                drug_name = metadata.get("drug_name", "")
-                dose = metadata.get("dose", "")
-                quantity_in_units = mapped_item.get("quantity_in_units", 0)
-                quantity_received_current = mapped_item.get("quantity_in_pack", 0)
-                warehouse_name = metadata.get("warehouse_name", "")
+                dose = item.get("dose")
+                quantity_in_units = item.get("quantity_in_units")
+                quantity_received_current = item.get("quantity_in_pack")
+                warehouse_name = item.get("eaushadhi_warehouse_name")
 
 
-                key = ( inward_no, drug_id, batch_no )
-                api_keys.add(key)
+                api_keys.add((inward_no, drug_id))
 
+                key = (inward_no, drug_id)
                 if key in existing_lookup:
                     db_item = existing_lookup[key]
                     db_item.drug_name = drug_name
+                    db_item.batch_no = batch_no
                     db_item.manufactured_date = manufactured_date
                     db_item.expiry_date = expiry_date
                     db_item.receipt_date = receipt_date
@@ -379,6 +417,20 @@ def fetch_inward_from_eaushadi(
                     "updated_by",
                 ]
             )
+        except Exception as exc:
+            logger.exception(
+                "Error processing eAushadi response | facility=%s date=%s",
+                facility_id, inward_date,
+            )
+            _mark_failed(
+                fetch_log, inward_record,
+                http_status_code=None,
+                error_code="PROCESSING_ERROR",
+                error_detail=str(exc),
+                user=user
+            )
+            raise 
+
     except Exception as exc:
         logger.exception(
             "Error processing eAushadi response | facility=%s date=%s",
@@ -391,7 +443,7 @@ def fetch_inward_from_eaushadi(
             error_detail=str(exc),
             user=user
         )
-        raise 
+        raise
 
     logger.info(
         "fetch_inward_from_eaushadi completed | inward_record=%s items=%d elapsed_ms=%d",
@@ -429,9 +481,13 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
         logger.exception("Failed to update fetch_log during failure marking")
 
     try:
+        inward_record.meta = {
+            "error_code": error_code,
+            "error_message": f"Invalid EAUSHADHI_DEPLOYMENT",
+        }
         inward_record.sync_status = SyncStatus.FAILED
         inward_record.updated_by = user
-        inward_record.save(update_fields=["sync_status", "updated_by"])
+        inward_record.save(update_fields=["meta", "sync_status", "updated_by"])
     except Exception:
         logger.exception("Failed to update inward_record during failure marking")
 

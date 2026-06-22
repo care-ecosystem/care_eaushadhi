@@ -191,7 +191,6 @@ class EAushadhiService:
 
         try:
             if deployment.lower() == "karnataka":
-                # ⚡⚡⚡ VALIDATOR TRIGGERED HERE ⚡⚡⚡
                 service = KarnatakaResponseService()
                 return service.process_response(raw_response, context)
             else:
@@ -208,20 +207,18 @@ class EAushadhiService:
                 total_items=0,
                 items_mapped=0,
                 items_failed=1,
-                error_rate=1.0,
+                # error_rate=1.0,
                 duration_ms=0,
                 items_per_second=0
             )
             return [], [e.to_dict()], error_metrics
         except Exception as e:
             logger.exception("Error processing response")
-            # Return empty metrics on error
-            from care_eaushadhi.api.validators.deployments.karnataka.service import ProcessingMetrics
             error_metrics = ProcessingMetrics(
                 total_items=0,
                 items_mapped=0,
                 items_failed=1,
-                error_rate=1.0,
+                # error_rate=1.0,
                 duration_ms=0,
                 items_per_second=0
             )

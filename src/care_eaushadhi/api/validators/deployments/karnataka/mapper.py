@@ -97,23 +97,21 @@ class KarnatakaMapper:
             "unit_pack": validated_item.unit_pack,
             "available_quantity": validated_item.available_quantity,
             "is_expired": validated_item.is_expired,
-            "metadata": {
-                "sl_no": validated_item.sl_no,
-                "drug_id": drug_id,
-                "batch_number": batch_number,                
-                "mfg_date": validated_item.mfg_date.isoformat(),
-                "exp_date": validated_item.exp_date.isoformat(),
-                "receipt_date": validated_item.receipt_date.isoformat(),                
-                "drug_name": validated_item.drug_name.strip(),
-                "dose": validated_item.dose.strip(),                
-                "institute_name": validated_item.institute_name.strip(),
-                "institute_type": validated_item.institute_type.value,
-                "warehouse_name": warehouse_name,                
-                "not_of_standard": validated_item.not_of_standard.value,
-                
-                "source_api": "eAushadhi",
-                "inward_date": inward_date.isoformat(),
-            },
+            "sl_no": validated_item.sl_no,
+            "drug_id": drug_id,
+            "batch_number": batch_number,                
+            "mfg_date": validated_item.mfg_date.isoformat(),
+            "exp_date": validated_item.exp_date.isoformat(),
+            "receipt_date": validated_item.receipt_date.isoformat(),                
+            "drug_name": validated_item.drug_name.strip(),
+            "dose": validated_item.dose.strip(),                
+            "institute_name": validated_item.institute_name.strip(),
+            "institute_type": validated_item.institute_type.value,
+            "warehouse_name": warehouse_name,                
+            "not_of_standard": validated_item.not_of_standard.value,
+            
+            "source_api": "eAushadhi",
+            "inward_date": inward_date.isoformat(),
         }
 
         logger.debug(

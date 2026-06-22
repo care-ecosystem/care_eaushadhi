@@ -17,6 +17,7 @@ import time
 from .validator import KarnatakaValidator
 from .mapper import KarnatakaMapper
 from care_eaushadhi.api.validators.exceptions import ValidationError
+from care_eaushadhi.settings import plugin_settings as settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class ProcessingMetrics(NamedTuple):
     total_items: int
     items_mapped: int
     items_failed: int
-    error_rate: float  # 0.0 to 1.0
+    # error_rate: float  # 0.0 to 1.0
     duration_ms: float
     items_per_second: float
 
@@ -45,8 +46,8 @@ class KarnatakaResponseService:
     """
 
     # Configuration
-    MAX_ITEMS_PER_REQUEST = 10000
-    MAX_ALLOWED_ERROR_PERCENTAGE = 10  # Reject batch if >10% errors
+    # MAX_ITEMS_PER_REQUEST = settings.EAUSHADHI_MAX_ITEMS_PER_REQUEST
+    # MAX_ALLOWED_ERROR_PERCENTAGE = settings.MAX_ALLOWED_ERROR_PERCENTAGE  # Reject batch if >10% errors
 
     def __init__(self):
         """Initialize service with validator and mapper."""
@@ -120,29 +121,29 @@ class KarnatakaResponseService:
             # ================================================================
             # STAGE 2: CHECK RESPONSE SIZE
             # ================================================================
-            if len(validated_items) > self.MAX_ITEMS_PER_REQUEST:
-                error_msg = (
-                    f"Response contains {len(validated_items)} items, "
-                    f"exceeds limit of {self.MAX_ITEMS_PER_REQUEST}"
-                )
-                logger.warning("Response size check failed | %s", error_msg)
+            # if len(validated_items) > self.MAX_ITEMS_PER_REQUEST:
+            #     error_msg = (
+            #         f"Response contains {len(validated_items)} items, "
+            #         f"exceeds limit of {self.MAX_ITEMS_PER_REQUEST}"
+            #     )
+            #     logger.warning("Response size check failed | %s", error_msg)
                 
-                elapsed = time.time() - start_time
-                return [], [{
-                    "error_code": "RESPONSE_SIZE_EXCEEDED",
-                    "message": error_msg,
-                    "details": {
-                        "item_count": len(validated_items),
-                        "max_allowed": self.MAX_ITEMS_PER_REQUEST,
-                    }
-                }], ProcessingMetrics(
-                    total_items=len(validated_items),
-                    items_mapped=0,
-                    items_failed=0,
-                    error_rate=1.0,
-                    duration_ms=elapsed * 1000,
-                    items_per_second=0,
-                )
+            #     elapsed = time.time() - start_time
+            #     return [], [{
+            #         "error_code": "RESPONSE_SIZE_EXCEEDED",
+            #         "message": error_msg,
+            #         "details": {
+            #             "item_count": len(validated_items),
+            #             "max_allowed": self.MAX_ITEMS_PER_REQUEST,
+            #         }
+            #     }], ProcessingMetrics(
+            #         total_items=len(validated_items),
+            #         items_mapped=0,
+            #         items_failed=0,
+            #         error_rate=1.0,
+            #         duration_ms=elapsed * 1000,
+            #         items_per_second=0,
+            #     )
 
             # ================================================================
             # STAGE 3: MAP EACH ITEM
@@ -183,50 +184,50 @@ class KarnatakaResponseService:
             # ================================================================
             # STAGE 4: CHECK ERROR THRESHOLD
             # ================================================================
-            total_processed = len(mapped_items) + len(validation_errors)
+            # total_processed = len(mapped_items) + len(validation_errors)
             
-            if total_processed > 0:
-                error_rate = len(validation_errors) / total_processed
-                error_percentage = error_rate * 100
+            # if total_processed > 0:
+            #     error_rate = len(validation_errors) / total_processed
+            #     error_percentage = error_rate * 100
                 
-                logger.info(
-                    "Mapping complete | mapped=%d errors=%d error_rate=%.1f%%",
-                    len(mapped_items),
-                    len(validation_errors),
-                    error_percentage,
-                )
+            #     logger.info(
+            #         "Mapping complete | mapped=%d errors=%d error_rate=%.1f%%",
+            #         len(mapped_items),
+            #         len(validation_errors),
+            #         error_percentage,
+            #     )
                 
                 # Reject batch if error rate exceeds threshold
-                if error_rate > (self.MAX_ALLOWED_ERROR_PERCENTAGE / 100):
-                    logger.error(
-                        "Batch rejected: error rate %.1f%% exceeds threshold %.1f%% | "
-                        "mapped=%d errors=%d",
-                        error_percentage,
-                        self.MAX_ALLOWED_ERROR_PERCENTAGE,
-                        len(mapped_items),
-                        len(validation_errors),
-                    )
+            #     if error_rate > (self.MAX_ALLOWED_ERROR_PERCENTAGE / 100):
+            #         logger.error(
+            #             "Batch rejected: error rate %.1f%% exceeds threshold %.1f%% | "
+            #             "mapped=%d errors=%d",
+            #             error_percentage,
+            #             self.MAX_ALLOWED_ERROR_PERCENTAGE,
+            #             len(mapped_items),
+            #             len(validation_errors),
+            #         )
                     
-                    # Clear mapped items - reject entire batch
-                    batch_errors = validation_errors.copy()
-                    mapped_items = []
+            #         # Clear mapped items - reject entire batch
+            #         batch_errors = validation_errors.copy()
+            #         mapped_items = []
                     
-                    batch_errors.insert(0, {
-                        "error_code": "BATCH_ERROR_THRESHOLD_EXCEEDED",
-                        "message": (
-                            f"Batch rejected: error rate {error_percentage:.1f}% "
-                            f"exceeds threshold {self.MAX_ALLOWED_ERROR_PERCENTAGE}%"
-                        ),
-                        "details": {
-                            "total_items": total_processed,
-                            "error_count": len(validation_errors),
-                            "error_rate": error_rate,
-                        }
-                    })
+            #         batch_errors.insert(0, {
+            #             "error_code": "BATCH_ERROR_THRESHOLD_EXCEEDED",
+            #             "message": (
+            #                 f"Batch rejected: error rate {error_percentage:.1f}% "
+            #                 f"exceeds threshold {self.MAX_ALLOWED_ERROR_PERCENTAGE}%"
+            #             ),
+            #             "details": {
+            #                 "total_items": total_processed,
+            #                 "error_count": len(validation_errors),
+            #                 "error_rate": error_rate,
+            #             }
+            #         })
                     
-                    validation_errors = batch_errors
-            else:
-                error_rate = 0.0
+            #         validation_errors = batch_errors
+            # else:
+            #     error_rate = 0.0
 
             # ================================================================
             # STAGE 5: RETURN RESULTS WITH METRICS
@@ -238,7 +239,7 @@ class KarnatakaResponseService:
                 total_items=len(validated_items),
                 items_mapped=len(mapped_items),
                 items_failed=len(validation_errors),
-                error_rate=error_rate,
+                # error_rate=error_rate,
                 duration_ms=elapsed * 1000,
                 items_per_second=items_per_second,
             )
@@ -258,7 +259,7 @@ class KarnatakaResponseService:
                 total_items=0,
                 items_mapped=0,
                 items_failed=1,
-                error_rate=1.0,
+                # error_rate=1.0,
                 duration_ms=elapsed * 1000,
                 items_per_second=0,
             )
@@ -275,7 +276,7 @@ class KarnatakaResponseService:
                 total_items=0,
                 items_mapped=0,
                 items_failed=1,
-                error_rate=1.0,
+                # error_rate=1.0,
                 duration_ms=elapsed * 1000,
                 items_per_second=0,
             )
