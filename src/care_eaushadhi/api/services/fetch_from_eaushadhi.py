@@ -18,6 +18,7 @@ from care_eaushadhi.api.validators import (
     KarnatakaResponseService,
     ValidationError,
 )
+from care_eaushadhi.api.validators.deployments.karnataka.service import ProcessingMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,8 @@ class EAushadhiService:
         Raises:
             requests.RequestException: On network/connection errors
         """
-        inward_date_ddmmyyyy = date.fromisoformat(inward_date).strftime("%d/%m/%Y")
+        inward_date_ddmmyyyy = date.fromisoformat(
+            inward_date).strftime("%d/%m/%Y")
         
         try:
             url = settings.EAUSHADHI_API_ENDPOINT
@@ -69,10 +71,12 @@ class EAushadhiService:
             proxies = {}
             if settings.EAUSHADHI_API_PROXY_HTTP:
                 proxies['http'] = settings.EAUSHADHI_API_PROXY_HTTP
-                logger.info("Using HTTP proxy: %s", settings.EAUSHADHI_API_PROXY_HTTP)
+                logger.info("Using HTTP proxy: %s",
+                            settings.EAUSHADHI_API_PROXY_HTTP)
             if settings.EAUSHADHI_API_PROXY_HTTPS:
                 proxies['https'] = settings.EAUSHADHI_API_PROXY_HTTPS
-                logger.info("Using HTTPS proxy: %s", settings.EAUSHADHI_API_PROXY_HTTPS)
+                logger.info("Using HTTPS proxy: %s",
+                            settings.EAUSHADHI_API_PROXY_HTTPS)
 
             headers = {
                 'accept': 'application/json',
@@ -93,7 +97,8 @@ class EAushadhiService:
 
             logger.info(
                 "Calling e-Aushadhi API | url=%s date=%s connect_timeout=%s read_timeout=%s verify_ssl=%s proxy=%s",
-                url, inward_date_ddmmyyyy, connect_timeout, read_timeout, verify_ssl, bool(proxies)
+                url, inward_date_ddmmyyyy, connect_timeout, read_timeout, verify_ssl, bool(
+                    proxies)
             )
 
             response = session.post(
@@ -145,11 +150,15 @@ class EAushadhiService:
     # =========================================================================
 
     @staticmethod
-    def process_eaushadhi_response(
-        raw_response,
-        context,
-        deployment=None,
-    ):
+    def process_eaushadhi_response(raw_response, context, deployment=None):
+        """
+        Returns:
+            Tuple of (mapped_items, validation_errors, metrics)
+            - mapped_items: List of dicts ready for database
+            - validation_errors: List of error dicts
+            - metrics: ProcessingMetrics with duration, items_per_second, etc.
+        """
+
         if deployment is None:
             deployment = settings.EAUSHADHI_DEPLOYMENT
 
@@ -190,19 +199,34 @@ class EAushadhiService:
                     f"Unknown deployment: {deployment}",
                     error_code="UNKNOWN_DEPLOYMENT"
                 )
-                # return [], [{
-                #     "error_code": "UNKNOWN_DEPLOYMENT",
-                #     "message": f"Unknown deployment: {deployment}"
-                # }]
 
 
         except ValidationError as e:
             logger.warning("Validation failed: %s", e.to_dict())
-            return [], [e.to_dict()]
+
+            error_metrics = ProcessingMetrics(
+                total_items=0,
+                items_mapped=0,
+                items_failed=1,
+                error_rate=1.0,
+                duration_ms=0,
+                items_per_second=0
+            )
+            return [], [e.to_dict()], error_metrics
         except Exception as e:
             logger.exception("Error processing response")
+            # Return empty metrics on error
+            from care_eaushadhi.api.validators.deployments.karnataka.service import ProcessingMetrics
+            error_metrics = ProcessingMetrics(
+                total_items=0,
+                items_mapped=0,
+                items_failed=1,
+                error_rate=1.0,
+                duration_ms=0,
+                items_per_second=0
+            )
             return [], [{
                 "error_code": "PROCESSING_ERROR",
                 "message": str(e),
                 "details": {"exception_type": type(e).__name__}
-            }]
+            }], error_metrics

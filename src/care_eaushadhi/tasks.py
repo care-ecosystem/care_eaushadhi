@@ -127,7 +127,7 @@ def fetch_inward_from_eaushadi(
             error_detail=str(exc),
             user=user
         )
-        raise  # still let Celery retry/fail the task
+        raise
 
     try:
 
@@ -179,6 +179,10 @@ def fetch_inward_from_eaushadi(
         logger.info("🔍 Starting validation and mapping...")
         deployment = settings.EAUSHADHI_DEPLOYMENT
         
+        inward_record.sync_status = SyncStatus.PARSING
+        inward_record.save(update_fields=["sync_status"])
+        logger.info("✓ Inward record sync_status updated to PARSING")
+        
         try:
             context = {
                 'inward_date': inward_date,
@@ -186,20 +190,21 @@ def fetch_inward_from_eaushadi(
                 'eaushadhi_institute_id': institute_id,
             }
             
-            mapped_items, validation_errors = EAushadhiService.process_eaushadhi_response(
+            mapped_items, validation_errors, metrics = EAushadhiService.process_eaushadhi_response(
                 raw_response=items_from_api,
                 context=context,
                 deployment=deployment
             )
             
             logger.info(
-                "✓ Validation complete | valid=%d errors=%d",
-                len(mapped_items), len(validation_errors)
+                "✓ Validation complete | valid=%d errors=%d duration_ms=%.2f rate=%.1f/sec",
+                len(mapped_items), len(validation_errors), metrics.duration_ms, metrics.items_per_second
             )
             
             if validation_errors:
                 logger.warning(f"⚠️  {len(validation_errors)} validation errors:")
                 error = validation_errors[0]
+                logger.error(f"❌ STOPPING: Validation error - {error.get('error_code')}: {error.get('message')}")
                 _mark_failed(
                     fetch_log=fetch_log,
                     inward_record=inward_record,
@@ -208,8 +213,8 @@ def fetch_inward_from_eaushadi(
                     error_detail=error.get("message"),
                     user=user
                 )
-
-            return
+                logger.error(f"❌ RETURNING NOW - Task will exit here")
+                return
         
         except Exception as e:
             logger.exception("❌ Validator failed: %s", str(e))
@@ -222,7 +227,6 @@ def fetch_inward_from_eaushadi(
             )
             raise
         
-        # Use validated items instead of raw API items
         items_from_api = mapped_items
 
         with transaction.atomic():
@@ -239,7 +243,6 @@ def fetch_inward_from_eaushadi(
             upsert_list = []
 
             for mapped_item in items_from_api:
-                # Extract from mapped/validated format
                 metadata = mapped_item.get("metadata", {})
                 
                 inward_no = mapped_item.get("eaushadhi_inwardno")
@@ -388,11 +391,18 @@ def fetch_inward_from_eaushadi(
             error_detail=str(exc),
             user=user
         )
-        raise  # let Celery mark the task as failed
+        raise 
 
     logger.info(
         "fetch_inward_from_eaushadi completed | inward_record=%s items=%d elapsed_ms=%d",
         inward_record_id, len(items_from_api), elapsed_ms,
+    )
+    
+    _mark_success(
+        fetch_log=fetch_log,
+        inward_record=inward_record,
+        total_items=len(items_from_api),
+        user=user
     )
 
 
@@ -424,6 +434,34 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
         inward_record.save(update_fields=["sync_status", "updated_by"])
     except Exception:
         logger.exception("Failed to update inward_record during failure marking")
+
+
+def _mark_success(fetch_log, inward_record, total_items, user=None):
+    """Mark fetch and inward record as successful."""
+    try:
+        fetch_log.fetch_status = FetchStatus.SUCCESS
+        fetch_log.total_items_in_response = total_items
+        fetch_log.updated_by = user
+        fetch_log.save(
+            update_fields=[
+                "fetch_status",
+                "total_items_in_response",
+                "updated_by"
+            ]
+        )
+        logger.info("fetch_log marked as SUCCESS | total_items=%d", total_items)
+    except Exception:
+        logger.exception("Failed to update fetch_log during success marking")
+
+    try:
+        inward_record.sync_status = SyncStatus.FETCHED
+        inward_record.items_initial_count = total_items
+        inward_record.items_current_count = total_items
+        inward_record.updated_by = user
+        inward_record.save(update_fields=["sync_status", "items_initial_count", "items_current_count", "updated_by"])
+        logger.info("inward_record marked as FETCHED")
+    except Exception:
+        logger.exception("Failed to update inward_record during success marking")
 
 
 def _parse_date(value: str | None) -> date | None:
