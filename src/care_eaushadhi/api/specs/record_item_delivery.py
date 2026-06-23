@@ -1,8 +1,11 @@
 import datetime
+from decimal import Decimal
+from typing import Optional
 
 from django.core.exceptions import ObjectDoesNotExist
-from pydantic import UUID4, Field, ConfigDict
+from pydantic import UUID4
 from rest_framework.exceptions import ValidationError
+from django.db.models import Sum
 
 from care.emr.models.product import Product
 from care.emr.models.product_knowledge import ProductKnowledge
@@ -20,6 +23,10 @@ from care_eaushadhi.models.eaushadhi_inward_record_item_delivery import (
     EAushadhiInwardRecordItemDelivery,
     InwardRecordItemDeliveryStatus,
 )
+from care_eaushadhi.settings import plugin_settings as settings
+
+
+STRICT_QUANTITY_VALIDATION = settings.EAUSHADHI_STRICT_QUANTITY_VALIDATION
 
 
 class RecordItemDeliveryReadSpec(EMRResource):
@@ -79,7 +86,7 @@ class RecordItemDeliveryCreateSpec(EMRResource):
     quantity_received: int | float
 
     def perform_extra_deserialization(self, is_update, obj):
-
+        
         try:
             obj.facility = Facility.objects.get(external_id=self.facility_id)
         except ObjectDoesNotExist:
@@ -125,9 +132,60 @@ class RecordItemDeliveryCreateSpec(EMRResource):
         else:
             obj.supply_delivery = None
 
-        obj.quantity_received = self.quantity_received
+        obj.quantity_received = Decimal(str(self.quantity_received))
+        
+        status = getattr(obj, 'status', InwardRecordItemDeliveryStatus.ACCEPTED)
+
+        if status == InwardRecordItemDeliveryStatus.ACCEPTED and STRICT_QUANTITY_VALIDATION:
+            self._validate_quantity_for_record_item(
+                quantity_received=obj.quantity_received,
+                inward_record_item_id=obj.inward_record_item.id,
+                exclude_record_id=None
+            )
 
         return obj
+
+    @staticmethod
+    def _validate_quantity_for_record_item(
+        quantity_received: Decimal,
+        inward_record_item_id: int,
+        exclude_record_id: Optional[int] = None
+    ) -> None:
+        
+        try:
+            record_item = EAushadhiInwardRecordItem.objects.get(
+                id=inward_record_item_id
+            )
+        except EAushadhiInwardRecordItem.DoesNotExist:
+            raise ValidationError({
+                "record_item_id": ["Record item not found"]
+            })
+        
+        available_qty = record_item.quantity_in_units
+        
+        queryset = EAushadhiInwardRecordItemDelivery.objects.filter(
+            inward_record_item_id=inward_record_item_id,
+            deleted=False,
+            status__in=[
+                InwardRecordItemDeliveryStatus.ACCEPTED,
+                InwardRecordItemDeliveryStatus.ACCEPTED_OVERRIDE
+            ]
+        )
+        
+        if exclude_record_id:
+            queryset = queryset.exclude(id=exclude_record_id)
+        
+        result = queryset.aggregate(total=Sum('quantity_received'))
+        already_received_qty = Decimal(result['total'] or 0)
+        
+        total_qty = already_received_qty + quantity_received
+        
+        if total_qty > available_qty:
+            raise ValidationError({
+                "quantity_received": [
+                    "Cannot receive more than the available quantity"
+                ]
+            })
 
 
 class RecordItemDeliveryUpdateSpec(EMRResource):
@@ -140,7 +198,7 @@ class RecordItemDeliveryUpdateSpec(EMRResource):
     def perform_extra_deserialization(self, is_update, obj):
 
         if self.quantity_received is not None:
-            obj.quantity_received = self.quantity_received
+            obj.quantity_received = Decimal(str(self.quantity_received))
 
         if self.status is not None:
             valid_statuses = [choice[0]
@@ -151,4 +209,63 @@ class RecordItemDeliveryUpdateSpec(EMRResource):
                 })
             obj.status = self.status
 
+        status_to_validate = obj.status
+        
+        if status_to_validate == InwardRecordItemDeliveryStatus.ACCEPTED and STRICT_QUANTITY_VALIDATION:
+            RecordItemDeliveryUpdateSpec._validate_quantity_for_record_item(
+                quantity_received=obj.quantity_received,
+                inward_record_item_id=obj.inward_record_item.id,
+                exclude_record_id=obj.id 
+            )
+
         return obj
+
+    @staticmethod
+    def _validate_quantity_for_record_item(
+        quantity_received: Decimal,
+        inward_record_item_id: int,
+        exclude_record_id: Optional[int] = None
+    ) -> None:
+
+        
+        try:
+            record_item = EAushadhiInwardRecordItem.objects.get(
+                id=inward_record_item_id
+            )
+        except EAushadhiInwardRecordItem.DoesNotExist:
+            raise ValidationError({
+                "record_item_id": ["Record item not found"]
+            })
+        
+        available_qty = record_item.quantity_in_units
+        
+        queryset = EAushadhiInwardRecordItemDelivery.objects.filter(
+            inward_record_item_id=inward_record_item_id,
+            deleted=False,
+            status__in=[
+                InwardRecordItemDeliveryStatus.ACCEPTED,
+                InwardRecordItemDeliveryStatus.ACCEPTED_OVERRIDE
+            ]
+        )
+        
+        if exclude_record_id:
+            queryset = queryset.exclude(id=exclude_record_id)
+        
+        result = queryset.aggregate(total=Sum('quantity_received'))
+        already_received_qty = Decimal(result['total'] or 0)
+        
+        total_qty = already_received_qty + quantity_received
+        
+
+        if total_qty > available_qty:
+            raise ValidationError({
+                "quantity_received": [
+                    "Cannot receive more than the available quantity"
+                ]
+            })
+
+
+
+
+
+        

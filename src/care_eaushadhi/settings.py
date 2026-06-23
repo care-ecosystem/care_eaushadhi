@@ -80,7 +80,9 @@ class PluginSettings:  # pragma: no cover
         the base implementation checks if all the required settings are truthy.
         """
         for setting in self.required_settings:
-            if not getattr(self, setting):
+            try:
+                getattr(self, setting)
+            except AttributeError:
                 raise ImproperlyConfigured(
                     f'The "{setting}" setting is required. '
                     f'Please set the "{setting}" in the environment or the {PLUGIN_NAME} plugin config.'
@@ -100,7 +102,8 @@ class PluginSettings:  # pragma: no cover
 REQUIRED_SETTINGS = {
     "EAUSHADHI_API_ENDPOINT",
     "EAUSHADHI_API_SECRET_KEY",
-    "EAUSHADHI_API_RETRY_COUNT"
+    "EAUSHADHI_API_RETRY_COUNT",
+    "EAUSHADHI_STRICT_QUANTITY_VALIDATION",
 }
 
 DEFAULTS = {
@@ -113,7 +116,8 @@ DEFAULTS = {
     "EAUSHADHI_API_VERIFY_SSL": True,
     "EAUSHADHI_API_PROXY_HTTP": "",
     "EAUSHADHI_API_PROXY_HTTPS": "",
-    "SIMILARITY_THRESHOLD": 0.3
+    "SIMILARITY_THRESHOLD": 0.3,
+    "EAUSHADHI_STRICT_QUANTITY_VALIDATION": True,
 }
 
 plugin_settings = PluginSettings(
