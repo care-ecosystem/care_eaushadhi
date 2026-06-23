@@ -203,9 +203,9 @@ def fetch_inward_from_eaushadi(
             )
             
             if validation_errors:
-                logger.warning(f"⚠️  {len(validation_errors)} validation errors:")
+                logger.warning(f"{len(validation_errors)} validation errors:")
                 error = validation_errors[0]
-                logger.error(f"❌ STOPPING: Validation error - {error.get('error_code')}: {error.get('message')}")
+                logger.error(f"STOPPING: Validation error - {error.get('error_code')}: {error.get('message')}")
                 
                 # UPDATE INWARD RECORD META WITH ERROR CODE
                 inward_record.meta = {

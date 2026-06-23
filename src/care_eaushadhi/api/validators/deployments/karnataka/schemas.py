@@ -1,20 +1,5 @@
 """Pydantic schemas for the Karnataka HMIS instinward API.
 
-Endpoint
-POST https://aushada.karnataka.gov.in/e-services/api/instinward/eGovuser
-
-Request body::
-
-{"InwardDate": "DD/MM/YYYY"}
-
-Response shapes (all observed)::
-
-[ {item}, {item}, ... ]   # rows for that date
-[]                        # valid date, no rows
-null                      # invalid date (e.g. 31/04/2026)
-
-Pattern confidence legend used in the inline comments below:
-
 CONFIRMED — holds for every row across multiple sample responses
 OBSERVED — only one value seen so far; treated as free-form
 GUESS — extrapolated from field name; not yet validated against data
@@ -33,9 +18,6 @@ from pydantic import (
 )
 
 
-# =========================================================================
-# Reusable string types
-# =========================================================================
 
 InwardNo = Annotated[
     str,
@@ -44,11 +26,6 @@ InwardNo = Annotated[
         pattern=r"^INI/WH/\d{4}-\d{2}/\d{6}/\d+$",
     ),
 ]
-"""Inward number format. CONFIRMED across both sample dates.
-
-Pattern: INI/WH/YYYY-YY/XXXXXX/NNNNNNN
-Examples: INI/WH/2026-27/000931/79067, INI/WH/2026-27/000898/55494
-"""
 
 InstituteId = Annotated[
     str,
