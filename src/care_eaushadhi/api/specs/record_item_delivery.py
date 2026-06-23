@@ -4,6 +4,7 @@ from typing import Optional
 
 from django.core.exceptions import ObjectDoesNotExist
 from pydantic import UUID4
+from pydantic import field_validator
 from rest_framework.exceptions import ValidationError
 from django.db.models import Sum
 
@@ -144,6 +145,20 @@ class RecordItemDeliveryCreateSpec(EMRResource):
             )
 
         return obj
+    
+    @field_validator('quantity_received')
+    @classmethod
+    def validate_quantity_received(cls, v):
+        """Runs automatically - no manual calls needed"""
+        if v is None:
+            return v
+        
+        v = Decimal(str(v))
+        
+        if v <= 0:
+            raise ValueError('Quantity must be positive')
+        
+        return v
 
     @staticmethod
     def _validate_quantity_for_record_item(
@@ -219,6 +234,20 @@ class RecordItemDeliveryUpdateSpec(EMRResource):
             )
 
         return obj
+    
+    @field_validator('quantity_received')
+    @classmethod
+    def validate_quantity_received(cls, v):
+        """Runs automatically - no manual calls needed"""
+        if v is None:
+            return v
+        
+        v = Decimal(str(v))
+        
+        if v <= 0:
+            raise ValueError('Quantity must be positive')
+        
+        return v
 
     @staticmethod
     def _validate_quantity_for_record_item(

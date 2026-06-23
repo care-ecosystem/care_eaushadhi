@@ -81,13 +81,18 @@ class PluginSettings:  # pragma: no cover
         """
         for setting in self.required_settings:
             try:
-                getattr(self, setting)
-            except AttributeError:
+                value = getattr(self, setting)
+                if value is None or (isinstance(value, str) and value == ""):
+                    raise ImproperlyConfigured(
+                        f'The "{setting}" setting is required. '
+                        f'Please set the "{setting}" in the environment or the {PLUGIN_NAME} plugin config.'
+                    )
+            except AttributeError as exc:
                 raise ImproperlyConfigured(
                     f'The "{setting}" setting is required. '
                     f'Please set the "{setting}" in the environment or the {PLUGIN_NAME} plugin config.'
-                )
-
+                ) from exc
+            
     def reload(self) -> None:
         """
         Deletes the cached attributes so they will be recomputed next time they are accessed.
