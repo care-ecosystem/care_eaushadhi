@@ -226,6 +226,5 @@ class ProductMappingViewSet(
         can_write_product_knowledge = AuthorizationController.call(
             "can_write_facility_product_knowledge", request.user, facility
         )
-        can_create = no_suggestions and can_write_product_knowledge
 
-        return Response({"results": results, "can_create": can_create})
+        return Response({"results": results, "can_create": can_write_product_knowledge})
