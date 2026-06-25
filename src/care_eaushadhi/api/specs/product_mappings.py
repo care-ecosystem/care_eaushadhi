@@ -52,7 +52,7 @@ class ProductMappingReadSpec(EMRResource):
     eaushadhi_drug_id: str
     eaushadhi_drug_name: str
     product_knowledge: dict | None = None
-    mapping_type: str | None = None
+    mapping_type: ProductMappingType | None = None
     usage_count: int = 0
     last_used_date: str | None = None
     deleted: bool = False
