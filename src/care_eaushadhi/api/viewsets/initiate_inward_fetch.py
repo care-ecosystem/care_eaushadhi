@@ -129,6 +129,7 @@ class InitiateInwardFetchViewSet(GenericViewSet):
                 update_fields=[
                     "last_attempted_fetch_log",
                     "updated_by",
+                    "modified_date",
                     *( ["created_by"] if is_created else [] )
                 ]
             )
