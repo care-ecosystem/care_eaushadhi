@@ -4,6 +4,10 @@ from care.emr.models.base import EMRBaseModel
 from care.facility.models import Facility
 from care.emr.models import ProductKnowledge
 
+class ProductMappingType(models.TextChoices):
+    BULK_IMPORT = "BULK_IMPORT"
+    MANUAL = "MANUAL"
+
 class EAushadhiProductMapping(EMRBaseModel):
     facility = models.ForeignKey(
         Facility,
@@ -21,6 +25,12 @@ class EAushadhiProductMapping(EMRBaseModel):
         ProductKnowledge,
         on_delete=models.PROTECT,
         related_name="eaushadhi_mappings"
+    )
+
+    mapping_type = models.CharField(
+        choices=ProductMappingType.choices,
+        default=ProductMappingType.MANUAL,
+        max_length=20
     )
 
     usage_count = models.IntegerField(default=0)
