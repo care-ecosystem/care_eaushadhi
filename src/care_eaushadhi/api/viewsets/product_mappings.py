@@ -176,7 +176,7 @@ class ProductMappingViewSet(
         existing_mappings = EAushadhiProductMapping.objects.filter(
             facility=facility,
             eaushadhi_drug_id=eaushadhi_drug_id,
-        ).order_by("-usage_count").select_related(
+        ).order_by("-usage_count", "-last_used_date").select_related(
             "product_knowledge",
             "product_knowledge__category",
             "product_knowledge__facility",
