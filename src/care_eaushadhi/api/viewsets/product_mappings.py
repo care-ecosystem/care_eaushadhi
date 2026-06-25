@@ -97,6 +97,11 @@ class ProductMappingViewSet(
         if eaushadhi_drug_id:
             queryset = queryset.filter(eaushadhi_drug_id=eaushadhi_drug_id)
 
+        # Filter by mapping_type
+        mapping_type = self.request.query_params.get("mapping_type")
+        if mapping_type:
+            queryset = queryset.filter(mapping_type=mapping_type)
+
         # Ordering
         ordering = self.request.query_params.get("ordering", "-usage_count,-last_used_date")
         allowed_orderings = {
@@ -130,14 +135,17 @@ class ProductMappingViewSet(
             return super().create(request, *args, **kwargs)
         except IntegrityError:
             facility_id = request.data.get("facility_id")
+            mapping_type = request.data.get("mapping_type", "MANUAL")
             if facility_id:
-                msg = (
-                    "Product mapping already exists for facility, eAushadhi drug and product knowledge"
-                )
+                if mapping_type == "BULK_IMPORT":
+                    msg = "A BULK_IMPORT mapping already exists for this facility and eAushadhi drug"
+                else:
+                    msg = "Product mapping already exists for facility, eAushadhi drug, product knowledge and mapping type"
             else:
-                msg = (
-                    "Global product mapping already exists for eAushadhi drug and product knowledge"
-                )
+                if mapping_type == "BULK_IMPORT":
+                    msg = "A global BULK_IMPORT mapping already exists for this eAushadhi drug"
+                else:
+                    msg = "Global product mapping already exists for eAushadhi drug, product knowledge and mapping type"
 
             return Response(
                 {
@@ -212,6 +220,7 @@ class ProductMappingViewSet(
                     eaushadhi_drug_id=eaushadhi_drug_id,
                     eaushadhi_drug_name=drug_name,
                     product_knowledge=pk,
+                    mapping_type="MANUAL",
                     usage_count=0,
                     last_used_date=None,
                     created_by=request.user,
@@ -221,8 +230,6 @@ class ProductMappingViewSet(
                 results.append(data)
                 processed_product_knowledge_ids.add(pk.id)
 
-        existing_count = existing_mappings.count()
-        no_suggestions = len(results) == existing_count
         can_write_product_knowledge = AuthorizationController.call(
             "can_write_facility_product_knowledge", request.user, facility
         )
