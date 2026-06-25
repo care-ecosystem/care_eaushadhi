@@ -256,6 +256,7 @@ class ProductMappingViewSet(
         )
 
         mappings = EAushadhiProductMapping.objects.filter(
+        mappings = EAushadhiProductMapping.objects.filter(
             facility=inward_record.facility,
             eaushadhi_drug_id__in=drug_ids,
             mapping_type=ProductMappingType.BULK_IMPORT,
