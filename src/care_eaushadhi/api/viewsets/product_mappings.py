@@ -260,6 +260,7 @@ class ProductMappingViewSet(
             eaushadhi_drug_id__in=drug_ids,
             mapping_type=ProductMappingType.BULK_IMPORT,
         ).select_related(
+            "facility",
             "product_knowledge",
             "product_knowledge__category",
             "product_knowledge__facility",
