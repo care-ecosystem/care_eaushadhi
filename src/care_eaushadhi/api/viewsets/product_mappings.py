@@ -23,8 +23,9 @@ from care_eaushadhi.api.specs.product_mappings import (
     ProductMappingUpdateSpec,
 )
 from care_eaushadhi.fuzzy_matching import get_fuzzy_suggestions
+from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
-from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping
+from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping, ProductMappingType
 
 logger = logging.getLogger(__name__)
 
@@ -235,3 +236,41 @@ class ProductMappingViewSet(
         )
 
         return Response({"results": results, "can_create": can_write_product_knowledge})
+
+    @action(detail=False, methods=["get"], url_path="default-mapping")
+    def default_mapping(self, request):
+        inward_record_id = request.query_params.get("inward_record_id")
+        if not inward_record_id:
+            return Response(
+                {"errors": [{"type": "validation_error", "msg": "inward_record_id is required"}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        inward_record = get_object_or_404(EAushadhiInwardRecord, external_id=inward_record_id)
+        self._authorize_facility(inward_record.facility)
+
+        drug_ids = list(
+            EAushadhiInwardRecordItem.objects.filter(inward_record=inward_record)
+            .values_list("drug_id", flat=True)
+            .distinct()
+        )
+
+        mappings = EAushadhiProductMapping.objects.filter(
+        mappings = EAushadhiProductMapping.objects.filter(
+            facility=inward_record.facility,
+            eaushadhi_drug_id__in=drug_ids,
+            mapping_type=ProductMappingType.BULK_IMPORT,
+        ).select_related(
+            "facility",
+            "product_knowledge",
+            "product_knowledge__category",
+            "product_knowledge__facility",
+            "created_by",
+            "updated_by",
+        )
+
+        results = []
+        for mapping in mappings:
+            results.append(ProductMappingReadSpec.serialize(mapping).to_json())
+
+        return Response({"results": results})
