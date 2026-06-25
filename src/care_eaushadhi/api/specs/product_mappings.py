@@ -12,6 +12,7 @@ from care.emr.resources.inventory.product_knowledge.spec import ProductKnowledge
 
 from care_eaushadhi.models.eaushadhi_product_mapping import (
     EAushadhiProductMapping,
+    ProductMappingType,
 )
 
 
@@ -23,6 +24,7 @@ class ProductMappingCreateSpec(EMRResource):
     eaushadhi_drug_id: str
     eaushadhi_drug_name: str
     product_knowledge_id: UUID4
+    mapping_type: ProductMappingType = ProductMappingType.MANUAL
 
     def perform_extra_deserialization(self, is_update, obj):
         if self.facility_id:
@@ -50,6 +52,7 @@ class ProductMappingReadSpec(EMRResource):
     eaushadhi_drug_id: str
     eaushadhi_drug_name: str
     product_knowledge: dict | None = None
+    mapping_type: str | None = None
     usage_count: int = 0
     last_used_date: str | None = None
     deleted: bool = False
@@ -66,6 +69,7 @@ class ProductMappingReadSpec(EMRResource):
         mapping["product_knowledge"] = ProductKnowledgeReadSpec.serialize(
             obj.product_knowledge
         ).to_json()
+        mapping["mapping_type"] = obj.mapping_type
         mapping["usage_count"] = obj.usage_count
         mapping["last_used_date"] = obj.last_used_date.isoformat() if obj.last_used_date else None
         mapping["deleted"] = obj.deleted
