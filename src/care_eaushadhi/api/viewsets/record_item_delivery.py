@@ -91,15 +91,12 @@ class RecordItemDeliveryViewSet(
         )
  
         if not created:
-            mapping.usage_count = mapping.usage_count + 1
-            mapping.last_used_date = timezone.now()
-            mapping.updated_by = self.request.user
-            mapping.save(update_fields=[
-                'usage_count',
-                'last_used_date',
-                'updated_by',
-                'modified_date'
-            ])
+            from django.db.models import F
+            EAushadhiProductMapping.objects.filter(pk=mapping.pk).update(
+                usage_count=F('usage_count') + 1,
+                last_used_date=timezone.now(),
+                updated_by=self.request.user,
+            )
 
     def clean_update_data(self, request_data, keep_fields: set | None = None):
         clean_data = super().clean_update_data(request_data, keep_fields)
