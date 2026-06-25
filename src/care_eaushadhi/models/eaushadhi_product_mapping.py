@@ -55,12 +55,12 @@ class EAushadhiProductMapping(EMRBaseModel):
             models.UniqueConstraint(
                 fields=["facility", "eaushadhi_drug_id"],
                 name="uniq_facility_drug_bulk_import",
-                condition=Q(facility__isnull=False, mapping_type="BULK_IMPORT"),
+                condition=Q(facility__isnull=False, mapping_type=ProductMappingType.BULK_IMPORT),
             ),
             # At most one global BULK_IMPORT per drug
             models.UniqueConstraint(
                 fields=["eaushadhi_drug_id"],
                 name="uniq_global_drug_bulk_import",
-                condition=Q(facility__isnull=True, mapping_type="BULK_IMPORT"),
+                condition=Q(facility__isnull=True, mapping_type=ProductMappingType.BULK_IMPORT),
             ),
         ]
