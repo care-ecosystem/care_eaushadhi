@@ -23,8 +23,9 @@ from care_eaushadhi.api.specs.product_mappings import (
     ProductMappingUpdateSpec,
 )
 from care_eaushadhi.fuzzy_matching import get_fuzzy_suggestions
+from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 from care_eaushadhi.models.eaushadhi_inward_record_item import EAushadhiInwardRecordItem
-from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping
+from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapping, ProductMappingType
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,11 @@ class ProductMappingViewSet(
         if eaushadhi_drug_id:
             queryset = queryset.filter(eaushadhi_drug_id=eaushadhi_drug_id)
 
+        # Filter by mapping_type
+        mapping_type = self.request.query_params.get("mapping_type")
+        if mapping_type:
+            queryset = queryset.filter(mapping_type=mapping_type)
+
         # Ordering
         ordering = self.request.query_params.get("ordering", "-usage_count,-last_used_date")
         allowed_orderings = {
@@ -130,14 +136,17 @@ class ProductMappingViewSet(
             return super().create(request, *args, **kwargs)
         except IntegrityError:
             facility_id = request.data.get("facility_id")
+            mapping_type = request.data.get("mapping_type", "MANUAL")
             if facility_id:
-                msg = (
-                    "Product mapping already exists for facility, eAushadhi drug and product knowledge"
-                )
+                if mapping_type == "BULK_IMPORT":
+                    msg = "A BULK_IMPORT mapping already exists for this facility and eAushadhi drug"
+                else:
+                    msg = "Product mapping already exists for facility, eAushadhi drug, product knowledge and mapping type"
             else:
-                msg = (
-                    "Global product mapping already exists for eAushadhi drug and product knowledge"
-                )
+                if mapping_type == "BULK_IMPORT":
+                    msg = "A global BULK_IMPORT mapping already exists for this eAushadhi drug"
+                else:
+                    msg = "Global product mapping already exists for eAushadhi drug, product knowledge and mapping type"
 
             return Response(
                 {
@@ -176,7 +185,7 @@ class ProductMappingViewSet(
         existing_mappings = EAushadhiProductMapping.objects.filter(
             facility=facility,
             eaushadhi_drug_id=eaushadhi_drug_id,
-        ).order_by("-usage_count").select_related(
+        ).order_by("-usage_count", "-last_used_date").select_related(
             "product_knowledge",
             "product_knowledge__category",
             "product_knowledge__facility",
@@ -212,6 +221,7 @@ class ProductMappingViewSet(
                     eaushadhi_drug_id=eaushadhi_drug_id,
                     eaushadhi_drug_name=drug_name,
                     product_knowledge=pk,
+                    mapping_type="MANUAL",
                     usage_count=0,
                     last_used_date=None,
                     created_by=request.user,
@@ -221,11 +231,45 @@ class ProductMappingViewSet(
                 results.append(data)
                 processed_product_knowledge_ids.add(pk.id)
 
-        existing_count = existing_mappings.count()
-        no_suggestions = len(results) == existing_count
         can_write_product_knowledge = AuthorizationController.call(
             "can_write_facility_product_knowledge", request.user, facility
         )
-        can_create = no_suggestions and can_write_product_knowledge
 
-        return Response({"results": results, "can_create": can_create})
+        return Response({"results": results, "can_create": can_write_product_knowledge})
+
+    @action(detail=False, methods=["get"], url_path="default-mapping")
+    def default_mapping(self, request):
+        inward_record_id = request.query_params.get("inward_record_id")
+        if not inward_record_id:
+            return Response(
+                {"errors": [{"type": "validation_error", "msg": "inward_record_id is required"}]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        inward_record = get_object_or_404(EAushadhiInwardRecord, external_id=inward_record_id)
+        self._authorize_facility(inward_record.facility)
+
+        drug_ids = list(
+            EAushadhiInwardRecordItem.objects.filter(inward_record=inward_record)
+            .values_list("drug_id", flat=True)
+            .distinct()
+        )
+
+        mappings = EAushadhiProductMapping.objects.filter(
+            facility=inward_record.facility,
+            eaushadhi_drug_id__in=drug_ids,
+            mapping_type=ProductMappingType.BULK_IMPORT,
+        ).select_related(
+            "facility",
+            "product_knowledge",
+            "product_knowledge__category",
+            "product_knowledge__facility",
+            "created_by",
+            "updated_by",
+        )
+
+        results = []
+        for mapping in mappings:
+            results.append(ProductMappingReadSpec.serialize(mapping).to_json())
+
+        return Response({"results": results})

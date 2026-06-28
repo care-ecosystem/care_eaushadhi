@@ -1,113 +1,81 @@
 from django.db import IntegrityError
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet
+from rest_framework.exceptions import (
+    APIException,
+    PermissionDenied,
+    ValidationError,
+)
 
-from care.security.authorization.base import AuthorizationController
-from care.utils.shortcuts import get_object_or_404
+from care.emr.api.viewsets.base import (
+    EMRBaseViewSet,
+    EMRCreateMixin,
+)
 from care.facility.models import Facility
-from care.emr.models.supply_delivery import DeliveryOrder
+from care.security.authorization.base import AuthorizationController
 
-from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
+from care_eaushadhi.api.specs.record_delivery import (
+    RecordDeliveryCreateSpec,
+    RecordDeliveryReadSpec,
+)
 from care_eaushadhi.models.eaushadhi_inward_record_delivery import (
     EAushadhiInwardRecordDelivery,
 )
-from care.emr.resources.user.spec import UserSpec
 
 
-class RecordDeliveryViewSet(GenericViewSet):
+class ConflictException(APIException):
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Conflict"
+    default_code = "conflict"
 
-    def _authorize_facility(self, facility):
+
+class RecordDeliveryViewSet(
+    EMRCreateMixin,
+    EMRBaseViewSet,
+):
+    database_model = EAushadhiInwardRecordDelivery
+
+    pydantic_model = RecordDeliveryCreateSpec
+    pydantic_retrieve_model = RecordDeliveryReadSpec
+
+    def authorize_create(self, instance):
+
+        try:
+            facility = Facility.objects.get(
+                external_id=instance.facility_id
+            )
+        except Facility.DoesNotExist:
+            raise ValidationError("Facility not found")
+
         if not AuthorizationController.call(
-            "can_use_eaushadhi_integration", self.request.user, facility
+            "can_use_eaushadhi_integration",
+            self.request.user,
+            facility,
         ):
             raise PermissionDenied(
                 "You are not authorized to use eAushadhi plugin for this facility"
             )
 
-    def create(self, request, *args, **kwargs):
-        inward_record_id = request.data.get("inward_record_id")
-        facility_id = request.data.get("facility_id")
-        delivery_order_id = request.data.get("delivery_order_id")
+    def perform_create(self, instance):
+        """
+        instance is EAushadhiInwardRecordDelivery.
+        """
 
-        # --- 400: required field validation ---
-        required_fields = {
-            "inward_record_id": inward_record_id,
-            "facility_id": facility_id,
-            "delivery_order_id": delivery_order_id,
-        }
-        details = {
-            field: ["This field is required"]
-            for field, value in required_fields.items()
-            if not value
-        }
-        if details:
-            return Response(
-                {"error": "Invalid input parameters", "details": details},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        instance.created_by = self.request.user
+        instance.updated_by = self.request.user
 
-        # --- resolve FKs (404 if any external_id is unknown) ---
-        inward_record = get_object_or_404(
-            EAushadhiInwardRecord, external_id=inward_record_id
-        )
-        facility = get_object_or_404(Facility, external_id=facility_id)
-        delivery_order = get_object_or_404(
-            DeliveryOrder, external_id=delivery_order_id
-        )
-
-        self._authorize_facility(facility)
-
-        # facility isn't stored on the delivery; it lives on inward_record.
-        # Validate the supplied facility actually owns this inward_record.
-        if inward_record.facility_id != facility.id:
-            return Response(
-                {
-                    "error": "Invalid input parameters",
-                    "details": {
-                        "facility_id": [
-                            "Does not match the inward_record's facility"
-                        ]
-                    },
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # --- 409: delivery_order already linked (UNIQUE constraint) ---
         try:
-            delivery = EAushadhiInwardRecordDelivery.objects.create(
-                inward_record=inward_record,
-                delivery_order=delivery_order,
-                created_by=request.user,
-                updated_by=request.user,
-            )
-        except IntegrityError:
-            return Response(
-                {"error": "delivery_order_id is already linked to an inward_record"},
-                status=status.HTTP_409_CONFLICT,
+            instance.save()
+
+        except IntegrityError as exc:
+            constraint_name = getattr(
+                getattr(exc.__cause__, "diag", None),
+                "constraint_name",
+                None,
             )
 
-        # --- 201: created ---
-        user_data = {
-            "id": str(request.user.external_id),
-            "username": request.user.username,
-            "first_name": request.user.first_name,
-            "last_name": request.user.last_name,
-            "email": request.user.email,
-        }
-        return Response(
-            {
-                "id": str(delivery.external_id),
-                "inward_record_id": str(delivery.inward_record.external_id),
-                "delivery_order_id": str(delivery.delivery_order.external_id),
-                "facility_id": str(facility.external_id),
-                # "created_by": user_data,
-                # "updated_by": user_data,
-                "created_by": UserSpec.serialize(delivery.created_by).to_json(),
-                "updated_by": UserSpec.serialize(delivery.updated_by).to_json(),
-                "created_date": delivery.created_date.isoformat(),
-                "modified_date": delivery.modified_date.isoformat(),
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            if constraint_name == "care_eaushadhi_eaushadhiinwardrecorddeliv_delivery_order_id_key":
+                raise ConflictException(
+                    "delivery_order_id is already linked to an inward_record"
+                ) from exc
+
+            raise

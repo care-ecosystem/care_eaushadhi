@@ -56,7 +56,7 @@ def fetch_inward_from_eaushadi(
     user = get_object_or_404(User, external_id=user_id)
 
     inward_record.last_attempted_fetch_log = fetch_log
-    inward_record.save(update_fields=["last_attempted_fetch_log"])
+    inward_record.save(update_fields=["last_attempted_fetch_log", "modified_date"])
 
     start_ms = int(time.time() * 1000)
 
@@ -390,7 +390,8 @@ def fetch_inward_from_eaushadi(
                     "total_items_in_response",
                     "retry_count",
                     "updated_by",
-                    "response_payload"
+                    "response_payload",
+                    "modified_date"
                 ]
             )
 
@@ -415,6 +416,7 @@ def fetch_inward_from_eaushadi(
                     "items_initial_count",
                     "items_current_count",
                     "updated_by",
+                    "modified_date"
                 ]
             )
         except Exception as exc:
@@ -474,7 +476,8 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
                 "error_code",
                 "error_message",
                 "error_detail",
-                "updated_by"
+                "updated_by",
+                "modified_date"                
             ]
         )
     except Exception:
@@ -487,7 +490,7 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
         }
         inward_record.sync_status = SyncStatus.FAILED
         inward_record.updated_by = user
-        inward_record.save(update_fields=["meta", "sync_status", "updated_by"])
+        inward_record.save(update_fields=["sync_status", "updated_by", "modified_date"])
     except Exception:
         logger.exception("Failed to update inward_record during failure marking")
 
