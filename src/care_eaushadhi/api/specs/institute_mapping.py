@@ -72,8 +72,9 @@ class InstituteMappingUpdateSpec(EMRResource):
     Does NOT modify supplier_mappings (use dedicated endpoint for that).
     """
     __model__ = EAushadhiInstituteMapping
-    __exclude__ = ["id", "facility", "eaushadhi_institute_id", "created_by", "updated_by", "created_date", "modified_date", "deleted", "external_id", "history"]
+    __exclude__ = ["id", "facility", "created_by", "updated_by", "created_date", "modified_date", "deleted", "external_id", "history"]
 
+    eaushadhi_institute_id: str | None = None
     schema_version: str | None = None
     credentials_ref: str | None = None
     meta: dict | None = None
