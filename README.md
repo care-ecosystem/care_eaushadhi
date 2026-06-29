@@ -43,16 +43,16 @@ The input CSV must contain the following columns:
 | Column | Description |
 |--------|-------------|
 | Facility ID | UUID of the facility |
-| EAushadhi Drug ID | eAushadhi drug identifier (e.g. `D00185`) |
-| EAushadhi Drug Name | Full name of the drug (e.g. `Amoxycillin Capsules IP 250 mg 1x1`) |
-| Product Knowledge ID | UUID of the product knowledge entry |
+| EAushadhi Drug ID | eAushadhi drug identifier (e.g. `11.3.28`) |
+| EAushadhi Drug Name | Full name of the drug (e.g. `Telmisartan Tablet IP 40mg 1x10x10`) |
+| Product Knowledge Slug | Slug of the product knowledge entry |
 
 A `sample.csv` is included in this repository:
 
 
-| Facility ID | EAushadhi Drug ID | EAushadhi Drug Name | Product Knowledge ID |
-| ----------- | ----------------- | ------------------- | ------------ |
-| e1ff13b6-383a-4217-a367-f421f7bbe478 | D00185 | Amoxycillin Capsules IP 250 mg 1x1 | 0d6e92a1-dda5-4b2f-a8df-8bb71cb136b4 | 
+| Facility ID | EAushadhi Drug ID | EAushadhi Drug Name | Product Knowledge Slug |
+| ----------- | ----------------- | ------------------- | ---------------------- |
+| e1ff13b6-383a-4217-a367-f421f7bbe478 | 11.3.28 | Telmisartan Tablet IP 40mg 1x10x10 | f-e1ff13b6-383a-4217-a367-f421f7bbe478-telmisartan-40mg |
 
 
 ### Steps to get Facility ID from UI
