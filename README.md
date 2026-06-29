@@ -24,6 +24,18 @@ This script creates product mappings with the mapping type `BULK_IMPORT` by read
 - Creates product mappings with the mapping type `BULK_IMPORT`.
 - Continues processing even if one or more CSV rows are invalid, while logging the corresponding errors.
 
+
+## Configuration
+
+Open `product_mapping_import.py` and update the configuration block at the top:
+
+```python
+BASE_URL = "https://your-care-instance.example.com"
+USERNAME  = "your-admin-username"
+PASSWORD  = "your-admin-password"
+CSV_FILE  = "sample.csv"   # path to your input CSV
+```
+
 ## CSV Format
 
 The input CSV must contain the following columns:
@@ -43,16 +55,28 @@ A `sample.csv` is included in this repository:
 | e1ff13b6-383a-4217-a367-f421f7bbe478 | D00185 | Amoxycillin Capsules IP 250 mg 1x1 | 0d6e92a1-dda5-4b2f-a8df-8bb71cb136b4 | 
 
 
-## Configuration
+### Steps to get Facility ID from UI
+1. Log into CARE using your credentials (username and password).
+2. From the home page, click on the facility you want to configure product mapping for.
+3. The URL will look like: `.../facility/e1ff13b6-383a-4217-a367-f421f7bbe478/overview`
+4. Copy the text between `facility/` and `/overview`, i.e. `e1ff13b6-383a-4217-a367-f421f7bbe478`.
+5. Place it in the CSV file in the `Facility ID` column.
 
-Open `product_mapping_import.py` and update the configuration block at the top:
+### Steps to retrieve Product Knowledge Slug from UI
+1. Log into CARE using your credentials (username and password).
+2. From the home page, click on the facility you want to configure product mapping for.
+3. Expand the sidebar on left hand side if not expanded and expand the `Settings` option.
+4. Inside the `Settings` option, click on the `Product Knowledge` option.
+5. Click on the category the product exists inside.
+6. Using the search bar, search for the product for which you want to create the product mapping.
+7. Click on the "View" button.
+8. The URL will look like: `.../settings/product_knowledge/f-e1ff13b6-383a-4217-a367-f421f7bbe478-telmisartan-40mg`
+9. Copy the text after `product_knowledge/`, i.e. `f-e1ff13b6-383a-4217-a367-f421f7bbe478-telmisartan-40mg`.
+10. Paste it in the CSV file in the `Product Knowledge Slug` column.
 
-```python
-BASE_URL = "https://your-care-instance.example.com"
-USERNAME  = "your-admin-username"
-PASSWORD  = "your-admin-password"
-CSV_FILE  = "sample.csv"   # path to your input CSV
-```
+### Note 
+You can also use `care_import_fe` plugin to download a CSV for Product Knowledge information for your facility. From there, you can extract product knowledge slugs.
+
 
 ## Running the Script
 
