@@ -3,10 +3,9 @@ import time
 import logging
 import json
 from datetime import date
-from time import timezone
 
 from celery import shared_task
-from django.db import transaction
+from django.utils import timezone
 import requests
 
 from care.facility.models import Facility
@@ -179,34 +178,34 @@ def fetch_inward_from_eaushadi(
 
         logger.info("🔍 Starting validation and mapping...")
         deployment = settings.EAUSHADHI_DEPLOYMENT
-        
+
         inward_record.sync_status = SyncStatus.PARSING
         inward_record.save(update_fields=["sync_status"])
         logger.info("✓ Inward record sync_status updated to PARSING")
-        
+
         try:
             context = {
                 'inward_date': inward_date,
                 'facility_id': str(facility_id),
                 'eaushadhi_institute_id': institute_id,
             }
-            
+
             mapped_items, validation_errors, metrics = EAushadhiService.process_eaushadhi_response(
                 raw_response=items_from_api,
                 context=context,
                 deployment=deployment
             )
-            
+
             logger.info(
                 "✓ Validation complete | valid=%d errors=%d duration_ms=%.2f rate=%.1f/sec",
                 len(mapped_items), len(validation_errors), metrics.duration_ms, metrics.items_per_second
             )
-            
+
             if validation_errors:
                 logger.warning(f"{len(validation_errors)} validation errors:")
                 error = validation_errors[0]
                 logger.error(f"STOPPING: Validation error - {error.get('error_code')}: {error.get('message')}")
-                
+
                 # UPDATE INWARD RECORD META WITH ERROR CODE
                 inward_record.meta = {
                     "error_code": error.get("error_code", "VALIDATION_ERROR"),
@@ -217,7 +216,7 @@ def fetch_inward_from_eaushadi(
                 inward_record.sync_status = SyncStatus.FAILED
                 inward_record.updated_by = user
                 inward_record.save(update_fields=["meta", "sync_status", "updated_by"])
-                
+
                 _mark_failed(
                     fetch_log=fetch_log,
                     inward_record=inward_record,
@@ -431,7 +430,7 @@ def fetch_inward_from_eaushadi(
                 error_detail=str(exc),
                 user=user
             )
-            raise 
+            raise
 
     except Exception as exc:
         logger.exception(
@@ -451,7 +450,7 @@ def fetch_inward_from_eaushadi(
         "fetch_inward_from_eaushadi completed | inward_record=%s items=%d elapsed_ms=%d",
         inward_record_id, len(items_from_api), elapsed_ms,
     )
-    
+
     _mark_success(
         fetch_log=fetch_log,
         inward_record=inward_record,
@@ -477,7 +476,7 @@ def _mark_failed(fetch_log, inward_record, http_status_code, error_code, error_d
                 "error_message",
                 "error_detail",
                 "updated_by",
-                "modified_date"                
+                "modified_date"
             ]
         )
     except Exception:
