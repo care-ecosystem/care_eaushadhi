@@ -7,12 +7,12 @@ from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord,
 from care_eaushadhi.api.specs.inward_record_item import InwardRecordItemReadSpec
 from care_eaushadhi.api.specs.inward_record_delivery import InwardRecordDeliveryReadSpec
 
-
 class InwardRecordListSpec(EMRResource):
     __model__ = EAushadhiInwardRecord
     __exclude__ = []
 
     id: UUID4 | None = None
+    meta: dict | None = None
     facility_id: UUID4 | None = None
     inward_date: datetime.date | None = None
     sync_status: SyncStatus | None = None
@@ -25,9 +25,13 @@ class InwardRecordListSpec(EMRResource):
     created_date: datetime.datetime | None = None
     modified_date: datetime.datetime | None = None
 
+    def to_json(self):
+        return self.model_dump(mode="json")
+
     @classmethod
     def perform_extra_serialization(cls, mapping, obj):
         mapping["id"] = obj.external_id
+        mapping["meta"] = obj.meta if obj.meta else {}
         mapping["facility_id"] = obj.facility.external_id if obj.facility else None
         mapping["last_successful_fetch_log_id"] = (
             obj.last_successful_fetch_log.external_id
@@ -45,6 +49,7 @@ class InwardRecordListSpec(EMRResource):
 class InwardRecordRetrieveSpec(InwardRecordListSpec):
     items: list[dict] = []
     deliveries: list[dict] = []
+    meta: dict | None = None
 
     @classmethod
     def perform_extra_serialization(cls, mapping, obj):
