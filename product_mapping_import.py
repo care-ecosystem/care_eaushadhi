@@ -55,6 +55,23 @@ class TokenManager:
         return {"Authorization": f"Bearer {self.access_token}"}
 
 
+def get_product_knowledge_id(base_url: str, token_manager: TokenManager, slug: str, facility_id: str) -> str:
+    url = f"{base_url}/api/v1/product_knowledge/{slug}/"
+    params = {"facility": facility_id}
+    response = requests.get(url, params=params, headers=token_manager.auth_header(), timeout=30)
+
+    if response.status_code == 401:
+        logger.info("Session expired — refreshing login and retrying the request.")
+        token_manager.refresh()
+        response = requests.get(url, params=params, headers=token_manager.auth_header(), timeout=30)
+
+    response.raise_for_status()
+    product_knowledge_id = response.json().get("id", "")
+    if not product_knowledge_id:
+        raise ValueError(f"No 'id' field in product knowledge response for slug '{slug}'.")
+    return product_knowledge_id
+
+
 def create_product_mapping(base_url: str, token_manager: TokenManager, facility_id: str, drug_id: str, drug_name: str, product_knowledge_id: str) -> dict:
     url = f"{base_url}/api/care_eaushadhi/product-mappings/"
     payload = {
@@ -76,7 +93,7 @@ def create_product_mapping(base_url: str, token_manager: TokenManager, facility_
 
 
 def process_csv(csv_file: str, base_url: str, token_manager: TokenManager) -> None:
-    required_columns = {"Facility ID", "EAushadhi Drug ID", "EAushadhi Drug Name", "Product Knowledge ID"}
+    required_columns = {"Facility ID", "EAushadhi Drug ID", "EAushadhi Drug Name", "Product Knowledge Slug"}
     success_count = 0
     error_count = 0
 
@@ -97,16 +114,16 @@ def process_csv(csv_file: str, base_url: str, token_manager: TokenManager) -> No
         for line_number, row in enumerate(reader, start=2):
             facility_id = row.get("Facility ID", "").strip()
             drug_id = row.get("EAushadhi Drug ID", "").strip()
-            drug_name = row.get("EAushadhi Drug ID", "")
-            product_knowledge_id = row.get("Product Knowledge ID", "").strip()
+            drug_name = row.get("EAushadhi Drug Name", "").strip()
+            product_knowledge_slug = row.get("Product Knowledge Slug", "").strip()
 
-            if not facility_id or not drug_id or not product_knowledge_id:
+            if not facility_id or not drug_id or not drug_name or not product_knowledge_slug:
                 missing_fields = [
                     field for field, val in [
                         ("Facility ID", facility_id),
                         ("EAushadhi Drug ID", drug_id),
-                        ("EAushadhi Drug ID", drug_name)
-                        ("Product Knowledge ID", product_knowledge_id),
+                        ("EAushadhi Drug Name", drug_name),
+                        ("Product Knowledge Slug", product_knowledge_slug),
                     ] if not val
                 ]
                 logger.warning(
@@ -118,6 +135,7 @@ def process_csv(csv_file: str, base_url: str, token_manager: TokenManager) -> No
                 continue
 
             try:
+                product_knowledge_id = get_product_knowledge_id(base_url, token_manager, product_knowledge_slug, facility_id)
                 result = create_product_mapping(base_url, token_manager, facility_id, drug_id, drug_name, product_knowledge_id)
                 logger.info("Row %d: Mapping created successfully (ID: %s).", line_number, result.get("id", "N/A"))
                 success_count += 1
