@@ -245,30 +245,24 @@ class InstituteMappingViewSet(
         detail=True,
         methods=["patch"],
         url_path="supplier-mappings",
-        url_name="supplier-mappings"
+        url_name="supplier-mappings",
     )
     def replace_supplier_mappings(self, request, *args, **kwargs):
         institute_mapping = self.get_object()
         self._authorize_facility(institute_mapping.facility)
 
         supplier_mappings_data = request.data.get("supplier_mappings")
-        if supplier_mappings_data is None or not isinstance(supplier_mappings_data, list):
+        if not isinstance(supplier_mappings_data, list) or not supplier_mappings_data:
             return Response(
-                {"error": "supplier_mappings must be a list"},
+                {"error": "supplier_mappings must be a non-empty list"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(supplier_mappings_data) == 0:
-            return Response(
-                {"error": "supplier_mappings list cannot be empty"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        supplier_mappings = []
         try:
-            for mapping_data in supplier_mappings_data:
-                spec = InstituteSupplierMappingCreateSpec(**mapping_data)
-                supplier_mappings.append(spec)
+            supplier_mappings = [
+                InstituteSupplierMappingCreateSpec(**item)
+                for item in supplier_mappings_data
+            ]
         except PydanticValidationError as exc:
             return Response(
                 {"error": "Invalid supplier mapping data", "details": exc.errors()},
@@ -276,15 +270,16 @@ class InstituteMappingViewSet(
             )
 
         supplier_ids = [sm.supplier_id for sm in supplier_mappings]
+
         if len(supplier_ids) != len(set(supplier_ids)):
             return Response(
                 {"error": "Duplicate supplier_id values are not allowed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if sum(1 for sm in supplier_mappings if sm.is_default) > 1:
+        if sum(sm.is_default for sm in supplier_mappings) > 1:
             return Response(
-                {"error": "At most one supplier_mapping may be marked is_default = true"},
+                {"error": "Only one supplier can be marked as default."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -293,87 +288,92 @@ class InstituteMappingViewSet(
             org_type="product_supplier",
             deleted=False,
         )
+
         if suppliers.count() != len(supplier_ids):
-            found_ids = {s.external_id for s in suppliers}
-            missing_ids = set(supplier_ids) - found_ids
+            found = {supplier.external_id for supplier in suppliers}
+            missing = set(supplier_ids) - found
             return Response(
-                {"error": f"Supplier(s) not found: {missing_ids}"},
+                {"error": f"Supplier(s) not found: {missing}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         suppliers_by_id = {
-            supplier.external_id: supplier for supplier in suppliers}
-
-        existing_mappings = {
-            sm.supplier.external_id: sm
-            for sm in institute_mapping.supplier_mappings.filter(deleted=False).select_related("supplier")
+            supplier.external_id: supplier
+            for supplier in suppliers
         }
-        existing_supplier_ids = set(existing_mappings.keys())
-        incoming_supplier_ids = set(supplier_ids)
 
-        all_mappings_by_external_id = {}
-        all_supplier_mappings = EAushadhiInstituteSupplierMapping._base_manager.filter(
-            institute_mapping_id=institute_mapping.id
+        all_mappings = {
+            mapping.supplier_id: mapping
+            for mapping in EAushadhiInstituteSupplierMapping._base_manager.filter(
+                institute_mapping=institute_mapping
+            )
+        }
+
+        current_default = next(
+            (
+                mapping
+                for mapping in all_mappings.values()
+                if not mapping.deleted and mapping.is_default
+            ),
+            None,
         )
-        for sm in all_supplier_mappings:
-            all_mappings_by_external_id[sm.external_id] = sm
+
+        incoming_default = next(
+            (sm for sm in supplier_mappings if sm.is_default),
+            None,
+        )
 
         with transaction.atomic():
-            # ===== STEP 1: SOFT-DELETE SUPPLIERS NOT IN INCOMING LIST =====
-            for supplier_id in existing_supplier_ids - incoming_supplier_ids:
-                mapping = existing_mappings[supplier_id]
-                mapping.deleted = True
-                mapping.updated_by = request.user
-                mapping.save()
+
+            for mapping in all_mappings.values():
+                supplier_external_id = mapping.supplier.external_id
+
+                if (
+                    not mapping.deleted
+                    and supplier_external_id not in supplier_ids
+                ):
+                    mapping.deleted = True
+                    mapping.updated_by = request.user
+                    mapping.save(update_fields=["deleted", "updated_by"])
+
+            if (
+                current_default
+                and incoming_default
+                and current_default.supplier.external_id != incoming_default.supplier_id
+            ):
+                current_default.is_default = False
+                current_default.updated_by = request.user
+                current_default.save(
+                    update_fields=["is_default", "updated_by"])
 
             for spec in supplier_mappings:
+                supplier = suppliers_by_id[spec.supplier_id]
 
-                if spec.id:
-                    if spec.id in all_mappings_by_external_id:
-                        mapping = all_mappings_by_external_id[spec.id]
-                        mapping.supplier = suppliers_by_id[spec.supplier_id]
-                        mapping.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
-                        mapping.is_default = spec.is_default
-                        mapping.updated_by = request.user
-                        mapping.deleted = False
-                        mapping.save()
-                    else:
-                        EAushadhiInstituteSupplierMapping.objects.create(
-                            institute_mapping=institute_mapping,
-                            supplier=suppliers_by_id[spec.supplier_id],
-                            external_id=spec.id,
-                            eaushadhi_warehouse_name=spec.eaushadhi_warehouse_name,
-                            is_default=spec.is_default,
-                            created_by=request.user,
-                            updated_by=request.user,
-                        )
+                mapping = all_mappings.get(supplier.id)
+
+                if mapping:
+                    mapping.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
+                    mapping.is_default = spec.is_default
+                    mapping.deleted = False
+                    mapping.updated_by = request.user
+                    mapping.save()
                 else:
-                    supplier_db_id = suppliers_by_id[spec.supplier_id].id
-                    existing_for_supplier = EAushadhiInstituteSupplierMapping._base_manager.filter(
-                        institute_mapping_id=institute_mapping.id,
-                        supplier_id=supplier_db_id
-                    ).first()
-
-                    if existing_for_supplier:
-                        # Found - restore and update
-                        existing_for_supplier.eaushadhi_warehouse_name = spec.eaushadhi_warehouse_name
-                        existing_for_supplier.is_default = spec.is_default
-                        existing_for_supplier.updated_by = request.user
-                        existing_for_supplier.deleted = False
-                        existing_for_supplier.save()
-                    else:
-                        EAushadhiInstituteSupplierMapping.objects.create(
-                            institute_mapping=institute_mapping,
-                            supplier=suppliers_by_id[spec.supplier_id],
-                            eaushadhi_warehouse_name=spec.eaushadhi_warehouse_name,
-                            is_default=spec.is_default,
-                            created_by=request.user,
-                            updated_by=request.user,
-                        )
+                    EAushadhiInstituteSupplierMapping.objects.create(
+                        institute_mapping=institute_mapping,
+                        supplier=supplier,
+                        eaushadhi_warehouse_name=spec.eaushadhi_warehouse_name,
+                        is_default=spec.is_default,
+                        created_by=request.user,
+                        updated_by=request.user,
+                    )
 
         institute_mapping = (
             EAushadhiInstituteMapping.objects
-            .select_related("facility", "created_by", "updated_by")
+            .select_related(
+                "facility",
+                "created_by",
+                "updated_by",
+            )
             .prefetch_related(
                 "supplier_mappings",
                 "supplier_mappings__supplier",
