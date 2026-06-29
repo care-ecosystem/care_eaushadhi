@@ -204,6 +204,11 @@ class InstituteMappingViewSet(
 
         # Update only the fields that were provided
         updated = False
+
+        if spec.eaushadhi_institute_id is not None:
+            instance.eaushadhi_institute_id = spec.eaushadhi_institute_id
+            updated = True
+
         if spec.schema_version is not None:
             instance.schema_version = spec.schema_version
             updated = True
