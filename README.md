@@ -43,11 +43,11 @@ Your spreadsheet must be saved as a **CSV file** (Comma Separated Values). It mu
 
 A ready-made `sample.csv` file is included in this folder — you can open it in Excel as a starting point.
 
-> **Tip:** When saving in Excel, go to **File → Save As** and choose **"CSV (Comma delimited)"** from the file type dropdown.
-
 ### How to get the Product Knowledge Name and Slug
 
 The easiest way is to download them all at once using the **`care_imports_fe`** plugin.
+
+#### Step 2.1 — Download the Product Knowledge CSV
 
 1. Log into CARE and go to the **Admin Dashboard**.
 2. In the left sidebar, click on **Exports**.
@@ -55,26 +55,60 @@ The easiest way is to download them all at once using the **`care_imports_fe`** 
 4. Click on the **Product Knowledge** tab.
 5. Click **Download CSV**.
 
-The downloaded CSV will look like this:
+A sample of the exported CSV is included in this folder as [**`product_knowledge_export_e1ff13b6-383a-4217-a367-f421f7bbe478.csv`**](./product_knowledge_export_e1ff13b6-383a-4217-a367-f421f7bbe478.csv) for reference. When opened in Excel it looks like this:
 
 | resourceCategory | slug | name | productType | … |
 |------------------|------|------|-------------|---|
-| Medicines | rabies-vaccine-human-ip-2 | Rabies Vaccine, Human IP 2.5IU/1 ML Vial with Diluent 1x1ml | medication | … |
-| Medicines | fluconazole-tablets | Fluconazole Tablets | medication | … |
-| Medicines | cefixime-oral-suspension | Cefixime Oral Suspension | medication | … |
+| Medications | ciprofloxacin-ip-500-mg | Ciprofloxacin IP 500 mg | medication | … |
+| Medications | telmisartan-40mg | Telmisartan 40mg | medication | … |
+| Medications | itraconazole-bp-100 | Itraconazole Capsule BP 100 m | medication | … |
 
-6. Open this CSV in Excel. You only need two columns from it:
-   - **`slug`** → this becomes your **Product Knowledge Slug**
-   - **`name`** → this becomes your **Product Knowledge Name**
+![alt text](image-7.png)
+---
 
-7. Copy those two columns into your import spreadsheet (renaming the headers to match exactly: `Product Knowledge Name` and `Product Knowledge Slug`).
-8. For each row, fill in the corresponding **EAushadhi Drug Name** and **EAushadhi Drug ID** from the eAushadhi system.
+#### Step 2.2 — Extract and rename the two columns you need
+
+You only need two columns from the downloaded file — **`slug`** and **`name`**. All other columns can be deleted.
+
+1. Open the downloaded CSV in Excel.
+2. Delete all columns **except** `slug` and `name`.
+3. Rename the column headers:
+   - `name` → **`Product Knowledge Name`**
+   - `slug` → **`Product Knowledge Slug`**
+4. Reorder so **Product Knowledge Name** is the first column and **Product Knowledge Slug** is the second.
+
+Your sheet should now look like this:
+
+| Product Knowledge Name | Product Knowledge Slug |
+| ---------------------- | ---------------------- |
+| Ciprofloxacin IP 500 mg | ciprofloxacin-ip-500-mg |
+| Telmisartan 40mg | telmisartan-40mg |
+| Itraconazole Capsule BP 100 m | itraconazole-bp-100 |
+
+
+![alt text](image-8.png)
+
+---
+
+#### Step 2.3 — Fill in the eAushadhi Drug Name and Drug ID
+
+Add two more columns to the right: **`EAushadhi Drug Name`** and **`EAushadhi Drug ID`**. For each row, fill in the matching drug name and drug ID from the eAushadhi system.
 
 Your completed spreadsheet should look like this:
 
 | Product Knowledge Name | Product Knowledge Slug | EAushadhi Drug Name | EAushadhi Drug ID |
 | ---------------------- | ---------------------- | ------------------- | ----------------- |
-| Telmisartan 40mg | f-e1ff13b6-383a-4217-a367-f421f7bbe478-telmisartan-40mg | Telmisartan Tablet IP 40mg 1x10x10 | 11.3.28 |
+| Telmisartan 40mg | telmisartan-40mg | Telmisartan Tablet IP 40mg 1x10x10 | 11.3.28 |
+
+![alt text](image-9.png)
+
+> **Tip:** When saving in Excel, go to **File → Save As** and choose **"CSV (Comma delimited)"** from the file type dropdown.
+
+Once saved, copy the CSV file into the same folder as `product_mapping_import.py`. Then open `product_mapping_import.py` in Notepad and update the `CSV_FILE` line to match your file's name. For example, if you saved your file as `my_mappings.csv`:
+
+```
+CSV_FILE = "my_mappings.csv"
+```
 
 <br />
 
