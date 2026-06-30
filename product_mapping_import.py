@@ -57,7 +57,8 @@ class TokenManager:
 
 
 def get_product_knowledge_id(base_url: str, token_manager: TokenManager, slug: str, facility_id: str) -> str:
-    url = f"{base_url}/api/v1/product_knowledge/{slug}/"
+    facility_slug = f"f-{facility_id}-{slug}"
+    url = f"{base_url}/api/v1/product_knowledge/{facility_slug}/"
     params = {"facility": facility_id}
     response = requests.get(url, params=params, headers=token_manager.auth_header(), timeout=30)
 
