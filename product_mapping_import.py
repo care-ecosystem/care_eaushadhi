@@ -13,10 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-BASE_URL = "http://localhost:9000"           # Update before running
-USERNAME = "admin"                              # Update before running
-PASSWORD = "admin"                              # Update before running
-CSV_FILE = "sample.csv"
+BASE_URL    = "http://localhost:9000"           # Update before running
+USERNAME    = "admin"                           # Update before running
+PASSWORD    = "admin"                           # Update before running
+FACILITY_ID = "e1ff13b6-383a-4217-a367-f421f7bbe478"               # Update before running
+CSV_FILE    = "sample.csv"
 # ───────────────────────────────────────────────────────────────────────────────
 
 
@@ -92,8 +93,8 @@ def create_product_mapping(base_url: str, token_manager: TokenManager, facility_
     return response.json()
 
 
-def process_csv(csv_file: str, base_url: str, token_manager: TokenManager) -> None:
-    required_columns = {"Facility ID", "EAushadhi Drug ID", "EAushadhi Drug Name", "Product Knowledge Slug"}
+def process_csv(csv_file: str, base_url: str, token_manager: TokenManager, facility_id: str) -> None:
+    required_columns = {"EAushadhi Drug ID", "EAushadhi Drug Name", "Product Knowledge Name", "Product Knowledge Slug"}
     success_count = 0
     error_count = 0
 
@@ -112,15 +113,14 @@ def process_csv(csv_file: str, base_url: str, token_manager: TokenManager) -> No
         logger.info("CSV file opened successfully. Starting to process rows...")
 
         for line_number, row in enumerate(reader, start=2):
-            facility_id = row.get("Facility ID", "").strip()
             drug_id = row.get("EAushadhi Drug ID", "").strip()
             drug_name = row.get("EAushadhi Drug Name", "").strip()
+            product_knowledge_name = row.get("Product Knowledge Name", "").strip()
             product_knowledge_slug = row.get("Product Knowledge Slug", "").strip()
 
-            if not facility_id or not drug_id or not drug_name or not product_knowledge_slug:
+            if not drug_id or not drug_name or not product_knowledge_slug:
                 missing_fields = [
                     field for field, val in [
-                        ("Facility ID", facility_id),
                         ("EAushadhi Drug ID", drug_id),
                         ("EAushadhi Drug Name", drug_name),
                         ("Product Knowledge Slug", product_knowledge_slug),
@@ -167,11 +167,11 @@ def main() -> None:
     try:
         token_manager.login()
     except Exception as exc:
-        logger.error("Login failed — please check your username, password, and server URL. Details: %s", exc)
+        logger.error("Login failed — please check your username, password, and server URL.")
         sys.exit(1)
 
     logger.info("Reading mappings from file: %s", CSV_FILE)
-    process_csv(CSV_FILE, BASE_URL, token_manager)
+    process_csv(CSV_FILE, BASE_URL, token_manager, FACILITY_ID)
 
 
 if __name__ == "__main__":
