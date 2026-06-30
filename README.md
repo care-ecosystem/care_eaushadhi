@@ -168,9 +168,11 @@ Copy your completed CSV file into the same folder as `product_mapping_import.py`
 ### `python` is not recognised
 
 **For windows:**
+
 ![alt text](image-1.png)
 
 **For Mac:**
+
 ![alt text](image.png)
 
 
