@@ -1,0 +1,2818 @@
+{
+  "info": {
+    "_postman_id": "e78ec081-dc11-4d49-ae3c-c1c9f6ae1e02",
+    "name": "EAushadhi",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "37884051"
+  },
+  "item": [
+    {
+      "name": "Positive Cases",
+      "item": [
+        {
+          "name": "Login API",
+          "item": [
+            {
+              "name": "ADMIN_TOKEN",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "pm.environment.set(\"TOKEN\", jsonData.access);\r",
+                      "console.log(\"✅ TOKEN saved\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"admin\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "CARE_VOLUNTEER_TOKEN",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "pm.environment.set(\"TOKEN\", jsonData.access);\r",
+                      "console.log(\"✅ TOKEN saved\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"care-volunteer\",\r\n  \"password\": \"Ohcn@123\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Deployed_Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "pm.environment.set(\"TOKEN\", jsonData.access);\r",
+                      "console.log(\"✅ TOKEN saved\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"admin123\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Institute Mapping",
+          "item": [
+            {
+              "name": "Create_Institute_Mapping",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. CREATE - SUCCESS (201)\r",
+                      "pm.test(\"✓ POST Create mapping - Success 201\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(201);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"id\");\r",
+                      "    pm.expect(res).to.have.property(\"facility_id\");\r",
+                      "    pm.expect(res).to.have.property(\"eaushadhi_institute_id\");\r",
+                      "    pm.expect(res).to.have.property(\"schema_version\");\r",
+                      "    \r",
+                      "    // ✅ STORE MAPPING ID\r",
+                      "    pm.environment.set(\"MAPPING_ID\", res.id);\r",
+                      "    console.log(\"✅ Mapping created with ID: \" + res.id);\r",
+                      "    \r",
+                      "    // ✅ STORE SUPPLIER ID (if returned in response)\r",
+                      "    if (res.supplier_mappings && res.supplier_mappings.length > 0) {\r",
+                      "        pm.environment.set(\"SUPPLIER_ID\", res.supplier_mappings[0].supplier_id);\r",
+                      "        console.log(\"✅ Supplier ID stored: \" + res.supplier_mappings[0].supplier_id);\r",
+                      "    }\r",
+                      "});\r",
+                      "\r",
+                      "// 2. CREATE - DUPLICATE FACILITY (409)\r",
+                      "pm.test(\"✗ POST Create - Duplicate facility 409\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(409);\r",
+                      "    let res = pm.response.json();\r",
+                      "    pm.expect(res).to.have.property(\"error\");\r",
+                      "    console.log(\"❌ Duplicate facility - Error: \" + res.error);\r",
+                      "});\r",
+                      "\r",
+                      "// 3. CREATE - INVALID SUPPLIER (400)\r",
+                      "pm.test(\"✗ POST Create - Invalid supplier 400\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(400);\r",
+                      "    let res = pm.response.json();\r",
+                      "    pm.expect(res.error).to.include(\"Supplier(s) not found\");\r",
+                      "    console.log(\"❌ Invalid supplier - Error: \" + res.error);\r",
+                      "});\r",
+                      "\r",
+                      "// 4. CREATE - INVALID FACILITY (404)\r",
+                      "pm.test(\"✗ POST Create - Non-existent facility 404\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(404);\r",
+                      "    let res = pm.response.json();\r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || \r",
+                      "               obj.hasOwnProperty(\"errors\") ||\r",
+                      "               obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    console.log(\"❌ Facility not found - Response:\", JSON.stringify(res));\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer  {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"facility_id\": \"{{FACILITY_ID}}\",\n    \"eaushadhi_institute_id\": \"INST-2024-001\",\n    \"schema_version\": \"1.0\",\n    \"supplier_mappings\":[\n      {\n        \"supplier_id\": \"{{SUPPLIER_ID}}\",\n        \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\n        \"is_used\": true\n      }\n    ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "institute-mappings",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get_All_Institute_Mappings",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "if (jsonData.results.length > 0) {\r",
+                      "  pm.environment.set(\"MAPPING_ID\", jsonData.results[0].id);\r",
+                      "  console.log(\"✅ MAPPING_ID saved: \" + jsonData.results[0].id);\r",
+                      "}\r",
+                      "\r",
+                      "// ============================================\r",
+                      "// 1. GET ALL - SUCCESS WITH CORRECT STRUCTURE\r",
+                      "// ============================================\r",
+                      "pm.test(\"✓ GET List all mappings - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"count\");\r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    pm.expect(Array.isArray(res.results)).to.be.true;\r",
+                      "    \r",
+                      "    if (res.results.length > 0) {\r",
+                      "        const mapping = res.results[0];\r",
+                      "        pm.expect(mapping).to.have.property(\"id\");\r",
+                      "        pm.expect(mapping).to.have.property(\"facility_id\");\r",
+                      "        pm.expect(mapping).to.have.property(\"eaushadhi_institute_id\");\r",
+                      "        pm.expect(mapping).to.have.property(\"schema_version\");\r",
+                      "        pm.expect(mapping).to.have.property(\"supplier_mappings\");\r",
+                      "    }\r",
+                      "    \r",
+                      "    console.log(\"✅ Total: \" + res.count + \" mappings\");\r",
+                      "});\r",
+                      "\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "packages": {},
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              },
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "institute-mappings",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get_One_Institute_Mapping",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. SUCCESS - Valid facility_id 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Retrieve - Valid facility_id 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"id\");\r",
+                      "    pm.expect(res).to.have.property(\"facility_id\");\r",
+                      "    pm.expect(res.facility_id).to.equal(\"baf1571c-bc1b-4c25-9d42-3c3361c58d54\");\r",
+                      "    pm.expect(res).to.have.property(\"eaushadhi_institute_id\");\r",
+                      "    \r",
+                      "    console.log(\"✅ Mapping retrieved\");\r",
+                      "});\r",
+                      "\r",
+                      "// 2. SUPPLIER MAPPINGS - Included in response\r",
+                      "\r",
+                      "pm.test(\"✓ GET Retrieve - Supplier mappings included 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"supplier_mappings\");\r",
+                      "    pm.expect(Array.isArray(res.supplier_mappings)).to.be.true;\r",
+                      "    \r",
+                      "    console.log(\"✅ Suppliers: \" + res.supplier_mappings.length);\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 3. INVALID FACILITY_ID - Non-existent facility 404\r",
+                      "\r",
+                      "pm.test(\"✗ GET Retrieve - Non-existent facility_id 404\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(404);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || obj.hasOwnProperty(\"errors\") || obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Facility not found\");\r",
+                      "});\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/{{MAPPING_ID}}/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "institute-mappings",
+                    "{{MAPPING_ID}}",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update_Institute_Mapping",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. SUCCESS - Update mapping 200\r",
+                      "\r",
+                      "pm.test(\"✓ PATCH Update - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"id\");\r",
+                      "    pm.expect(res).to.have.property(\"schema_version\");\r",
+                      "    pm.expect(res).to.have.property(\"credentials_ref\");\r",
+                      "    pm.expect(res).to.have.property(\"meta\");\r",
+                      "    \r",
+                      "    console.log(\"✅ Mapping updated\");\r",
+                      "});\r",
+                      "\r",
+                      "// 2. INVALID FACILITY_ID - Non-existent facility 404\r",
+                      "\r",
+                      "pm.test(\"✗ PATCH Update - Invalid facility_id 404\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(404);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || obj.hasOwnProperty(\"errors\") || obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Facility not found\");\r",
+                      "});\r",
+                      "\r",
+                      "// 3. INVALID UUID FORMAT - Bad facility_id 400\r",
+                      "\r",
+                      "pm.test(\"✗ PATCH Update - Invalid UUID format 400\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(405);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || obj.hasOwnProperty(\"errors\") || obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Invalid UUID rejected\");\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"schema_version\": \"2.0\",\n    \"credentials_ref\": \"NEW_EAUSHADHI_API_KEY\",\n    \"meta\": {\n      \"environment\": \"production\",\n      \"sync_frequency\": \"dailyy\"\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/{{MAPPING_ID}}/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "institute-mappings",
+                    "{{MAPPING_ID}}",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Trigger Inward Fetch",
+          "item": [
+            {
+              "name": "Institute_Inward_Fetch",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "// Save task_id\r",
+                      "pm.environment.set(\"TASK_ID\", jsonData.task_id);\r",
+                      "\r",
+                      "// Save inward_record_id (we know it from before)\r",
+                      "pm.environment.set(\"INWARD_RECORD_ID\", \"6141e996-9122-41fc-93bc-230f7324ce10\");\r",
+                      "\r",
+                      "console.log(\"✅ TASK_ID saved: \" + jsonData.task_id);\r",
+                      "console.log(\"✅ Status: \" + jsonData.status);\r",
+                      "console.log(\"✅ INWARD_RECORD_ID saved\");\r",
+                      "\r",
+                      "\r",
+                      "// 1. SUCCESS - Fetch initiated 202\r",
+                      "\r",
+                      "pm.test(\"✓ POST Initiate Fetch - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"status\");\r",
+                      "    pm.expect(res.status).to.equal(\"processing\");\r",
+                      "    pm.expect(res).to.have.property(\"task_id\");\r",
+                      "    pm.expect(res).to.have.property(\"message\");\r",
+                      "    \r",
+                      "    console.log(\"✅ Fetch initiated: \" + res.task_id);\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 2. INVALID BODY FIELD - Invalid date format 400\r",
+                      "\r",
+                      "pm.test(\"✗ POST Initiate Fetch - Invalid inward_date format 400\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(400);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"error\");\r",
+                      "    pm.expect(res.error).to.include(\"DD/MM/YYYY\");\r",
+                      "    \r",
+                      "    console.log(\"❌ Invalid date format rejected\");\r",
+                      "});\r",
+                      "\r",
+                      "// 3. MISSING FIELD - Missing field 400\r",
+                      "\r",
+                      "pm.test(\"✗ POST Initiate Fetch - Missing field 400\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(400);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "   \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        let errorStr = JSON.stringify(obj).toLowerCase();\r",
+                      "        return errorStr.includes(\"facility_id\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Missing field: \" + JSON.stringify(res.errors || res.error));\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"facility_id\": \"{{FACILITY_ID}}\",\n    \"inward_date\": \"27/07/2026\",\n    \"triggered_by\": \"USER\"\n}\n\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/initiate-inward-fetch/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "initiate-inward-fetch",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Inward Record",
+          "item": [
+            {
+              "name": "Get_All_Inward_Records",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "console.log(\"Total records: \" + jsonData.count);\r",
+                      "\r",
+                      "if (jsonData.results.length > 0){\r",
+                      "  var firstRecord = jsonData.results[0];\r",
+                      "  \r",
+                      "  // Save inward record id\r",
+                      "  pm.environment.set(\"INWARD_RECORD_ID\", firstRecord.id);\r",
+                      "  \r",
+                      "  // Save sync status\r",
+                      "  pm.environment.set(\"INWARD_RECORD_STATUS\", firstRecord.sync_status);\r",
+                      "  \r",
+                      "  // Save items count\r",
+                      "  pm.environment.set(\"ITEMS_COUNT\", firstRecord.items_initial_count);\r",
+                      "  \r",
+                      "  console.log(\"✅ INWARD_RECORD_ID saved: \" + firstRecord.id);\r",
+                      "  console.log(\"✅ Status: \" + firstRecord.sync_status);\r",
+                      "  console.log(\"✅ Items fetched: \" + firstRecord.items_initial_count);\r",
+                      "} else {\r",
+                      "  console.log(\"❌ No inward records found\");\r",
+                      "}\r",
+                      "\r",
+                      "// 1. SUCCESS - Get inward records 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Inward Records - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"count\");\r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    pm.expect(res.count).to.be.greaterThan(0);\r",
+                      "    \r",
+                      "    console.log(\"✅ Retrieved \" + res.count + \" records\");\r",
+                      "});\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              },
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/inward-records/?facility_id={{FACILITY_ID}}",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "inward-records",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "facility_id",
+                      "value": "{{FACILITY_ID}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get_One_Inward_Record",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. SUCCESS - Valid query parameter 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Inward Records - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"count\");\r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    pm.expect(Array.isArray(res.results)).to.be.true;\r",
+                      "    \r",
+                      "    console.log(\"✅ Retrieved \" + res.count + \" records\");\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 2. INVALID DATE FORMAT - Wrong format 400\r",
+                      "\r",
+                      "pm.test(\"✗ GET Inward Records - Invalid inward_date format 400\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(400);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || obj.hasOwnProperty(\"errors\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Invalid date format rejected\");\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 3. VALID DATE FORMAT - Filter applied 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Inward Records - With valid date filter 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"count\");\r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    \r",
+                      "    console.log(\"✅ Valid date filter applied\");\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/inward-records/?facility_id={{FACILITY_ID}}&inward_date=27/07/2026",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "inward-records",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "facility_id",
+                      "value": "{{FACILITY_ID}}"
+                    },
+                    {
+                      "key": "inward_date",
+                      "value": "27/07/2026"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Product Mapping Search",
+          "item": [
+            {
+              "name": "List_All",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "console.log(\"=== Product Mapping Search Response ===\");\r",
+                      "console.log(\"Total results: \" + jsonData.results.length);\r",
+                      "console.log(\"Can create: \" + jsonData.can_create);\r",
+                      "\r",
+                      "// Check if results found\r",
+                      "if (jsonData.results.length > 0) {\r",
+                      "  var firstResult = jsonData.results[0];\r",
+                      "  \r",
+                      "  // Save product knowledge id\r",
+                      "  if (firstResult.product_knowledge && firstResult.product_knowledge.id) {\r",
+                      "    pm.environment.set(\"PRODUCT_KNOWLEDGE_ID\", firstResult.product_knowledge.id);\r",
+                      "    console.log(\"✅ PRODUCT_KNOWLEDGE_ID saved: \" + firstResult.product_knowledge.id);\r",
+                      "  }\r",
+                      "  \r",
+                      "  // Save product id\r",
+                      "  if (firstResult.product_knowledge && firstResult.product_knowledge.external_id) {\r",
+                      "    pm.environment.set(\"PRODUCT_ID\", firstResult.product_knowledge.external_id);\r",
+                      "    console.log(\"✅ PRODUCT_ID saved: \" + firstResult.product_knowledge.external_id);\r",
+                      "  }\r",
+                      "  \r",
+                      "  // Check if exact mapping exists\r",
+                      "  if (firstResult.id) {\r",
+                      "    pm.environment.set(\"PRODUCT_MAPPING_ID\", firstResult.id);\r",
+                      "    console.log(\"✅ Exact mapping found! ID: \" + firstResult.id);\r",
+                      "  } else {\r",
+                      "    console.log(\"⚠️ Suggestion only (not exact mapping)\");\r",
+                      "  }\r",
+                      "}\r",
+                      "\r",
+                      "// Save can_create flag\r",
+                      "pm.environment.set(\"CAN_CREATE_MAPPING\", jsonData.can_create);\r",
+                      "console.log(\"✅ Post-script complete\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              },
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "product-mappings"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create_Product_Mappings",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "console.log(\"=== Pre-request Check ===\");\r",
+                      "\r",
+                      "// Check required variables\r",
+                      "var token = pm.environment.get(\"TOKEN\");\r",
+                      "var facility_id = pm.environment.get(\"FACILITY_ID\");\r",
+                      "var drug_id = pm.environment.get(\"DRUG_ID\");\r",
+                      "var product_knowledge_id = pm.environment.get(\"PRODUCT_KNOWLEDGE_ID\");\r",
+                      "\r",
+                      "console.log(\"TOKEN: \" + (token ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"FACILITY_ID: \" + (facility_id ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"DRUG_ID: \" + (drug_id ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"PRODUCT_KNOWLEDGE_ID: \" + (product_knowledge_id ? \"✅\" : \"❌\"));\r",
+                      "\r",
+                      "// Set defaults if not set\r",
+                      "if (!facility_id) {\r",
+                      "  pm.environment.set(\"FACILITY_ID\", \"baf1571c-bc1b-4c25-9d42-3c3361c58d54\");\r",
+                      "  console.log(\"⚠️ FACILITY_ID set to default\");\r",
+                      "}\r",
+                      "\r",
+                      "if (!drug_id) {\r",
+                      "  pm.environment.set(\"DRUG_ID\", \"e958d03b-bc63-46e1-b0da-75431c18df28\");\r",
+                      "  console.log(\"⚠️ DRUG_ID set to default\");\r",
+                      "}\r",
+                      "\r",
+                      "if (!product_knowledge_id) {\r",
+                      "  pm.environment.set(\"PRODUCT_KNOWLEDGE_ID\", \"a23346c1-ff0a-4b8d-bb1e-e863022872b2\");\r",
+                      "  console.log(\"⚠️ PRODUCT_KNOWLEDGE_ID set to default\");\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"✅ Pre-request checks complete\");\r",
+                      "\r",
+                      "\r",
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "console.log(\"=== Product Mapping Create Response ===\");\r",
+                      "\r",
+                      "// Check if successful\r",
+                      "if (pm.response.code === 201) {\r",
+                      "  console.log(\"✅ Mapping created successfully!\");\r",
+                      "  \r",
+                      "  // Save mapping id for next requests\r",
+                      "  pm.environment.set(\"PRODUCT_MAPPING_ID\", jsonData.id);\r",
+                      "  \r",
+                      "  // Save other useful data\r",
+                      "  if (jsonData.product_knowledge) {\r",
+                      "    pm.environment.set(\"PRODUCT_KNOWLEDGE_ID\", jsonData.product_knowledge.id);\r",
+                      "  }\r",
+                      "  \r",
+                      "  console.log(\"✅ PRODUCT_MAPPING_ID saved: \" + jsonData.id);\r",
+                      "  console.log(\"✅ Usage count: \" + jsonData.usage_count);\r",
+                      "} \r",
+                      "else if (pm.response.code === 409) {\r",
+                      "  console.log(\"⚠️ Conflict: Mapping already exists\");\r",
+                      "  console.log(\"Error: \" + jsonData.errors[0].msg);\r",
+                      "  \r",
+                      "  // Mapping already exists, that's OK\r",
+                      "  pm.environment.set(\"MAPPING_EXISTS\", true);\r",
+                      "} \r",
+                      "else {\r",
+                      "  console.log(\"❌ Error: \" + JSON.stringify(jsonData));\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"Response code: \" + pm.response.code);\r",
+                      "\r",
+                      "\r",
+                      "// 1. DUPLICATE MAPPING - Already exists 409\r",
+                      "pm.test(\"✗ POST Create - Duplicate mapping 409\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(409);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"errors\");\r",
+                      "    pm.expect(res.errors).to.be.an(\"array\");\r",
+                      "    pm.expect(res.errors[0]).to.have.property(\"type\");\r",
+                      "    pm.expect(res.errors[0].type).to.equal(\"conflict\");\r",
+                      "    pm.expect(res.errors[0].msg).to.include(\"already exists\");\r",
+                      "    \r",
+                      "    console.log(\"❌ Duplicate mapping rejected\");\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"facility_id\": \"{{FACILITY_ID}}\",\n  \"eaushadhi_drug_id\": \"{{DRUG_ID}}\",\n  \"eaushadhi_drug_name\": \"Domperidone\",\n  \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "product-mappings",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update_Product_Mappings",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "console.log(\"=== Pre-request Check ===\");\r",
+                      "\r",
+                      "var token = pm.environment.get(\"TOKEN\");\r",
+                      "var product_mapping_id = pm.environment.get(\"PRODUCT_MAPPING_ID\");\r",
+                      "\r",
+                      "console.log(\"TOKEN: \" + (token ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"PRODUCT_MAPPING_ID: \" + (product_mapping_id ? \"✅\" : \"❌\"));\r",
+                      "\r",
+                      "if (!product_mapping_id) {\r",
+                      "  console.log(\"⚠️ PRODUCT_MAPPING_ID not set!\");\r",
+                      "  console.log(\"Using default from previous create...\");\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"✅ Pre-request checks complete\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "console.log(\"=== Product Mapping Update Response ===\");\r",
+                      "\r",
+                      "if (pm.response.code === 200) {\r",
+                      "  console.log(\"✅ Mapping updated successfully!\");\r",
+                      "  \r",
+                      "  // Save updated data\r",
+                      "  pm.environment.set(\"LAST_USAGE_COUNT\", jsonData.usage_count);\r",
+                      "  pm.environment.set(\"LAST_USED_DATE\", jsonData.last_used_date);\r",
+                      "  \r",
+                      "  console.log(\"✅ Usage count: \" + jsonData.usage_count);\r",
+                      "  console.log(\"✅ Last used: \" + jsonData.last_used_date);\r",
+                      "  console.log(\"✅ Modified: \" + jsonData.modified_date);\r",
+                      "} else if (pm.response.code === 400) {\r",
+                      "  console.log(\"❌ Bad request: \" + jsonData.errors);\r",
+                      "} else {\r",
+                      "  console.log(\"❌ Error code: \" + pm.response.code);\r",
+                      "  console.log(\"Error: \" + JSON.stringify(jsonData));\r",
+                      "}"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": " Bearer {{TOKEN}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"usage_count\": 5,\r\n  \"last_used_date\": \"2026-06-11\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/{{PRODUCT_MAPPING_ID}}/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "product-mappings",
+                    "{{PRODUCT_MAPPING_ID}}",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List_With_Filter",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. SUCCESS - All parameters valid 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Search - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    pm.expect(Array.isArray(res.results)).to.be.true;\r",
+                      "    pm.expect(res.results.length).to.be.greaterThan(0);\r",
+                      "    \r",
+                      "    console.log(\"✅ Search successful: \" + res.results.length + \" results\");\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 2. INVALID FACILITY_ID - Wrong facility 400/404\r",
+                      "\r",
+                      "pm.test(\"✗ GET Search - Invalid facility_id\", function () {\r",
+                      "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || \r",
+                      "               obj.hasOwnProperty(\"errors\") ||\r",
+                      "               obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Invalid facility_id rejected\");\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/?facility_id={{FACILITY_ID}}&eaushadhi_drug_id={{DRUG_ID}}&inward_record_id={{INWARD_RECORD_ID}}",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "product-mappings",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "facility_id",
+                      "value": "{{FACILITY_ID}}"
+                    },
+                    {
+                      "key": "eaushadhi_drug_id",
+                      "value": "{{DRUG_ID}}"
+                    },
+                    {
+                      "key": "inward_record_id",
+                      "value": "{{INWARD_RECORD_ID}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Search_With_Suggestions",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "console.log(\"=== Pre-request Check for Search ===\");\r",
+                      "\r",
+                      "var token = pm.environment.get(\"TOKEN\");\r",
+                      "var facility_id = pm.environment.get(\"FACILITY_ID\");\r",
+                      "var drug_id = pm.environment.get(\"DRUG_ID\");\r",
+                      "\r",
+                      "console.log(\"TOKEN: \" + (token ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"FACILITY_ID: \" + (facility_id ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"DRUG_ID: \" + (drug_id ? \"✅\" : \"❌\"));\r",
+                      "\r",
+                      "if (!token || !facility_id || !drug_id) {\r",
+                      "  console.log(\"⚠️ Missing required variables!\");\r",
+                      "} else {\r",
+                      "  console.log(\"✅ All variables ready\");\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"Ready to search for drug mappings\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// 1. SUCCESS - All parameters valid 200\r",
+                      "\r",
+                      "pm.test(\"✓ GET Search - Success 200\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(200);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"results\");\r",
+                      "    pm.expect(Array.isArray(res.results)).to.be.true;\r",
+                      "    pm.expect(res.results.length).to.be.greaterThan(0);\r",
+                      "    \r",
+                      "    console.log(\"✅ Search successful: \" + res.results.length + \" results\");\r",
+                      "});\r",
+                      "\r",
+                      "\r",
+                      "// 2. INVALID FACILITY_ID - Wrong facility 400/404\r",
+                      "\r",
+                      "pm.test(\"✗ GET Search - Invalid facility_id\", function () {\r",
+                      "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.satisfy(function(obj) {\r",
+                      "        return obj.hasOwnProperty(\"error\") || \r",
+                      "               obj.hasOwnProperty(\"errors\") ||\r",
+                      "               obj.hasOwnProperty(\"detail\");\r",
+                      "    });\r",
+                      "    \r",
+                      "    console.log(\"❌ Invalid facility_id rejected\");\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/search/?facility_id={{FACILITY_ID}}&eaushadhi_drug_id={{DRUG_ID}}&inward_record_id={{INWARD_RECORD_ID}}",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "product-mappings",
+                    "search",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "facility_id",
+                      "value": "{{FACILITY_ID}}"
+                    },
+                    {
+                      "key": "eaushadhi_drug_id",
+                      "value": "{{DRUG_ID}}"
+                    },
+                    {
+                      "key": "inward_record_id",
+                      "value": "{{INWARD_RECORD_ID}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Record Delivery",
+          "item": [
+            {
+              "name": "Record_Deliveries",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "console.log(\"=== Pre-request Check ===\");\r",
+                      "\r",
+                      "var token = pm.environment.get(\"TOKEN\");\r",
+                      "var facility_id = pm.environment.get(\"FACILITY_ID\");\r",
+                      "var inward_record_id = pm.environment.get(\"INWARD_RECORD_ID\");\r",
+                      "var delivery_order_id = pm.environment.get(\"DELIVERY_ORDER_ID\");\r",
+                      "\r",
+                      "console.log(\"TOKEN: \" + (token ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"FACILITY_ID: \" + (facility_id ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"INWARD_RECORD_ID: \" + (inward_record_id ? \"✅\" : \"❌\"));\r",
+                      "console.log(\"DELIVERY_ORDER_ID: \" + (delivery_order_id ? \"✅\" : \"❌\"));\r",
+                      "\r",
+                      "// Set default delivery order if not set\r",
+                      "if (!delivery_order_id) {\r",
+                      "  pm.environment.set(\"DELIVERY_ORDER_ID\", \"99aa475e-f694-4871-92ed-85e87fa10273\");\r",
+                      "  console.log(\"⚠️ DELIVERY_ORDER_ID set to default\");\r",
+                      "}\r",
+                      "\r",
+                      "// Check all required variables\r",
+                      "var missing = [];\r",
+                      "if (!token) missing.push(\"TOKEN\");\r",
+                      "if (!facility_id) missing.push(\"FACILITY_ID\");\r",
+                      "if (!inward_record_id) missing.push(\"INWARD_RECORD_ID\");\r",
+                      "\r",
+                      "if (missing.length > 0) {\r",
+                      "  console.log(\"⚠️ Missing: \" + missing.join(\", \"));\r",
+                      "} else {\r",
+                      "  console.log(\"✅ All required variables present\");\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"✅ Pre-request checks complete\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "\r",
+                      "console.log(\"=== Record Delivery Response ===\");\r",
+                      "\r",
+                      "if (pm.response.code === 201) {\r",
+                      "  console.log(\"✅ Record delivery created successfully!\");\r",
+                      "  \r",
+                      "  // Save for next step (Record Item Delivery)\r",
+                      "  pm.environment.set(\"RECORD_DELIVERY_ID\", jsonData.id);\r",
+                      "  \r",
+                      "  console.log(\"\\n✅ Details:\");\r",
+                      "  console.log(\"   ID: \" + jsonData.id);\r",
+                      "  console.log(\"   Facility: \" + jsonData.facility_id);\r",
+                      "  console.log(\"   Inward Record: \" + jsonData.inward_record_id);\r",
+                      "  console.log(\"   Delivery Order: \" + jsonData.delivery_order_id);\r",
+                      "  console.log(\"   Created: \" + jsonData.created_date);\r",
+                      "  console.log(\"   Created by: \" + jsonData.created_by.username);\r",
+                      "  \r",
+                      "  console.log(\"\\n✅ RECORD_DELIVERY_ID saved for next step!\");\r",
+                      "  \r",
+                      "} else if (pm.response.code === 400) {\r",
+                      "  console.log(\"❌ Bad Request (400)\");\r",
+                      "  console.log(\"   Error: \" + jsonData.error);\r",
+                      "  \r",
+                      "  if (jsonData.details) {\r",
+                      "    console.log(\"   Details:\");\r",
+                      "    for (var key in jsonData.details) {\r",
+                      "      console.log(\"   - \" + key + \": \" + jsonData.details[key][0]);\r",
+                      "    }\r",
+                      "  }\r",
+                      "  \r",
+                      "} else if (pm.response.code === 404) {\r",
+                      "  console.log(\"❌ Not Found (404)\");\r",
+                      "  console.log(\"   One of the IDs doesn't exist:\");\r",
+                      "  console.log(\"   - Check FACILITY_ID\");\r",
+                      "  console.log(\"   - Check INWARD_RECORD_ID\");\r",
+                      "  console.log(\"   - Check DELIVERY_ORDER_ID\");\r",
+                      "  \r",
+                      "} else if (pm.response.code === 409) {\r",
+                      "  console.log(\"⚠️ Conflict (409)\");\r",
+                      "  console.log(\"   Error: \" + jsonData.error);\r",
+                      "  console.log(\"   This delivery_order is already linked!\");\r",
+                      "  \r",
+                      "  // Still try to save if we can extract ID\r",
+                      "  if (jsonData.id) {\r",
+                      "    pm.environment.set(\"RECORD_DELIVERY_ID\", jsonData.id);\r",
+                      "  }\r",
+                      "  \r",
+                      "} else {\r",
+                      "  console.log(\"❌ Unexpected error\");\r",
+                      "  console.log(\"   Code: \" + pm.response.code);\r",
+                      "  console.log(\"   Response: \" + JSON.stringify(jsonData));\r",
+                      "}\r",
+                      "\r",
+                      "console.log(\"\\nResponse code: \" + pm.response.code);\r",
+                      "\r",
+                      "\r",
+                      "// DUPLICATE DELIVERY - Already linked 400\r",
+                      "\r",
+                      "pm.test(\"✗ POST Create - Duplicate delivery_order_id 409\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(409);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"error\");\r",
+                      "    pm.expect(res.error).to.include(\"already linked\");\r",
+                      "    \r",
+                      "    console.log(\"❌ Duplicate delivery rejected: \" + res.error);\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"facility_id\": \"{{FACILITY_ID}}\",\n    \"inward_record_id\": \"{{INWARD_RECORD_ID}}\",\n    \"delivery_order_id\": \"{{DELIVERY_ORDER_ID}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/record-deliveries/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "record-deliveries",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "delivery_order_id(CARE API)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      ""
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/facility/baf1571c-bc1b-4c25-9d42-3c3361c58d54/order/delivery/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "facility",
+                    "baf1571c-bc1b-4c25-9d42-3c3361c58d54",
+                    "order",
+                    "delivery",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Record Item Delivery",
+          "item": [
+            {
+              "name": "Record_Item_Delivery",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// DUPLICATE DELIVERY - Active delivery exists 409\r",
+                      "\r",
+                      "pm.test(\"✗ POST Create - Duplicate active delivery 409\", function () {\r",
+                      "    pm.expect(pm.response.code).to.equal(409);\r",
+                      "    let res = pm.response.json();\r",
+                      "    \r",
+                      "    pm.expect(res).to.have.property(\"errors\");\r",
+                      "    pm.expect(res.errors).to.be.an(\"array\");\r",
+                      "    pm.expect(res.errors[0]).to.have.property(\"type\");\r",
+                      "    pm.expect(res.errors[0].type).to.equal(\"conflict\");\r",
+                      "    pm.expect(res.errors[0].msg).to.include(\"active delivery already exists\");\r",
+                      "    \r",
+                      "    console.log(\"❌ Duplicate delivery rejected: \" + res.errors[0].msg);\r",
+                      "});"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"facility_id\": \"{{FACILITY_ID}}\",\n    \"record_delivery_id\": \"{{RECORD_DELIVERY_ID}}\",\n    \"record_item_id\": \"{{INWARD_RECORD_ID}}\",\n    \"supply_delivery_id\": \"{{SUPPLY_DELIVERY_ID}}\",\n    \"product_id\": \"{{PRODUCT_ID}}\",\n    \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\",\n    \"quantity_received\": 2000\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/care_eaushadhi/record-item-deliveries/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "care_eaushadhi",
+                    "record-item-deliveries",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get_supply_delivery_id(CARE API)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/supply_delivery/?order={{DELIVERY_ORDER_ID}}",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "supply_delivery",
+                    ""
+                  ],
+                  "query": [
+                    {
+                      "key": "order",
+                      "value": "{{DELIVERY_ORDER_ID}}"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get_All_Products(CARE API)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/facility/{{FACILITY_ID}}/product/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "facility",
+                    "{{FACILITY_ID}}",
+                    "product",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Negative Cases",
+      "item": [
+        {
+          "name": "Token",
+          "item": [
+            {
+              "name": "Invalid username",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin123\",\r\n  \"password\": \"admin123\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Invalid Password",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"admin123123\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "ADMIN_TOKEN_LOCAL",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "pm.environment.set(\"TOKEN\", jsonData.access);\r",
+                      "console.log(\"✅ TOKEN saved\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"admin\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "ADMIN_TOKEN_DEPLOYED",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();\r",
+                      "pm.environment.set(\"TOKEN\", jsonData.access);\r",
+                      "console.log(\"✅ TOKEN saved\");"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n  \"username\": \"admin\",\r\n  \"password\": \"admin123\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login/",
+                  "host": [
+                    "{{BASE_URL}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login",
+                    ""
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Institude Mapping",
+          "item": [
+            {
+              "name": "WRONG_FacilityID",
+              "item": [
+                {
+                  "name": "Create_Institute_Mapping",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"baf1571c-bc1b-4c25-9d42-3c3361c58d5\",\r\n    \"eaushadhi_institute_id\": \"INST-2024-001\",\r\n    \"schema_version\": \"1.0\",\r\n    \"supplier_mappings\": [\r\n      {\r\n        \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n        \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\r\n        \"is_default\": true\r\n      }\r\n    ]\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get_One_Institute_Mapping",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/baf1571c-bc1b-4c25-9d42-3c3361c58/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        "baf1571c-bc1b-4c25-9d42-3c3361c58",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update_Institute_Mapping",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"schema_version\": \"2.0\",\r\n    \"credentials_ref\": \"NEW_EAUSHADHI_API_KEY\",\r\n    \"meta\": {\r\n      \"environment\": \"production\",\r\n      \"sync_frequency\": \"daily\"\r\n    }\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/baf1571c-bc1b-4c25-9d42-3c336/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        "baf1571c-bc1b-4c25-9d42-3c336",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "NO_Duplicates_Allowed(409)",
+              "item": [
+                {
+                  "name": "Create_Institute_Mapping",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"eaushadhi_institute_id\": \"INST-2024-001\",\r\n    \"schema_version\": \"1.0\",\r\n    \"supplier_mappings\":[\r\n      {\r\n        \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n        \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\r\n        \"is_default\": true\r\n      }\r\n    ]\r\n}   ",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "WRONG_SupplierID_Exists",
+              "item": [
+                {
+                  "name": "Create_Institute_Mapping",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"eaushadhi_institute_id\": \"INST-2024-001\",\r\n    \"schema_version\": \"1.0\",\r\n    \"supplier_mappings\":[\r\n      {\r\n        \"supplier_id\": \"944b6f64-f305-4d3d-b224-7367\",\r\n        \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\r\n        \"is_default\": true\r\n      }\r\n    ]\r\n}   ",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Validations",
+              "item": [
+                {
+                  "name": "Multiple_default_suppliers_Cannot_Exists",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"eaushadhi_institute_id\": \"INST-2024-001\",\r\n    \"schema_version\": \"1.0\",\r\n    \"supplier_mappings\": [\r\n        {\r\n            \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n            \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\r\n            \"is_default\": true\r\n        },\r\n        {\r\n            \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n            \"eaushadhi_warehouse_name\": \"Warehouse-Mumbai\",\r\n            \"is_default\": true\r\n        },\r\n        {\r\n            \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n            \"eaushadhi_warehouse_name\": \"Warehouse-Bangalore\",\r\n            \"is_default\": true\r\n        }\r\n    ]\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Missing_Fields",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    //\"eaushadhi_institute_id\": \"INST-2024-001\",\r\n    \"schema_version\": \"1.0\",\r\n    \"supplier_mappings\": [\r\n        {\r\n            \"supplier_id\": \"{{SUPPLIER_ID}}\",\r\n            \"eaushadhi_warehouse_name\": \"Warehouse-Delhi\",\r\n            \"is_default\": true\r\n        }\r\n    ]\r\n}"
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/institute-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "institute-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Trigger Inward Fetch",
+          "item": [
+            {
+              "name": "Invalid_Facility_Id",
+              "item": [
+                {
+                  "name": "Institute_Inward_Fetch",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"baf1571c-bc1b-4c25-9d4\",\r\n    \"inward_date\": \"10/06/2026\",\r\n    \"triggered_by\": \"USER\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/initiate-inward-fetch/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "initiate-inward-fetch",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Missing_Fields",
+              "item": [
+                {
+                  "name": "Institute_Inward_Fetch",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text",
+                        "disabled": true
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    //\"facility_id\": \"baf1571c-bc1b-4c25-9d4\",\r\n    \"inward_date\": \"10/06/2026\",\r\n    \"triggered_by\": \"USER\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/initiate-inward-fetch/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "initiate-inward-fetch",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Invalid_Date_Format",
+              "item": [
+                {
+                  "name": "Institute_Inward_Fetch",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"inward_date\": \"06/2026\",\r\n    \"triggered_by\": \"USER\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/initiate-inward-fetch/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "initiate-inward-fetch",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Only ADMIN ALLOWED",
+              "item": [
+                {
+                  "name": "Invalid Token",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    \"facility_id\": \"baf1571c-bc1b-4c25-9d42-3c3361c58d54\",\r\n    \"inward_date\": \"10/06/2026\",\r\n    \"triggered_by\": \"USER\"\r\n  }",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/initiate-inward-fetch/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "initiate-inward-fetch",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Inward Record",
+          "item": [
+            {
+              "name": "WRONG_FacilityID",
+              "item": [
+                {
+                  "name": "Get_One_Inward_Record",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/inward-records/?facility_id=baf1571c-bc1b-4c25-9d42-34&inward_date=2026-05-30",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "inward-records",
+                        ""
+                      ],
+                      "query": [
+                        {
+                          "key": "facility_id",
+                          "value": "baf1571c-bc1b-4c25-9d42-34"
+                        },
+                        {
+                          "key": "inward_date",
+                          "value": "2026-05-30"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "WRONG_DATE_FORMATE",
+              "item": [
+                {
+                  "name": "Get_One_Inward_Record",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/inward-records/?facility_id={{FACILITY_ID}}&inward_date=2026-05",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "inward-records",
+                        ""
+                      ],
+                      "query": [
+                        {
+                          "key": "facility_id",
+                          "value": "{{FACILITY_ID}}"
+                        },
+                        {
+                          "key": "inward_date",
+                          "value": "2026-05"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Product Mapping Search",
+          "item": [
+            {
+              "name": "WRONG_FacilityID",
+              "item": [
+                {
+                  "name": "List_With_Filter",
+                  "request": {
+                    "method": "GET",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/?facility_id=baf1571c-bc1b-4c25-9d42-3c331c58d50&eaushadhi_drug_id={{DRUG_ID}}&inward_record_id={{INWARD_RECORD_ID}}",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "product-mappings",
+                        ""
+                      ],
+                      "query": [
+                        {
+                          "key": "facility_id",
+                          "value": "baf1571c-bc1b-4c25-9d42-3c331c58d50"
+                        },
+                        {
+                          "key": "eaushadhi_drug_id",
+                          "value": "{{DRUG_ID}}"
+                        },
+                        {
+                          "key": "inward_record_id",
+                          "value": "{{INWARD_RECORD_ID}}"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create_Product_Mappings",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n  \"facility_id\": \"abd\",\r\n  \"eaushadhi_drug_id\": \"{{DRUG_ID}}\",\r\n  \"eaushadhi_drug_name\": \"Domperidone\",\r\n  \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "product-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Missing_Field",
+              "item": [
+                {
+                  "name": "Create_Product_Mappings",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n  //\"facility_id\": \"{{FACILITY_ID}}\",\r\n  \"eaushadhi_drug_id\": \"{{DRUG_ID}}\",\r\n  \"eaushadhi_drug_name\": \"Domperidone\",\r\n  \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "product-mappings",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Validation_Violations",
+              "item": [
+                {
+                  "name": "Duplicates_Entry_Not_Allowed(409)",
+                  "item": [
+                    {
+                      "name": "Create_Product_Mappings",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Authorization",
+                            "value": "Bearer {{TOKEN}}",
+                            "type": "text"
+                          },
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json",
+                            "type": "text"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\r\n  \"facility_id\": \"{{FACILITY_ID}}\",\r\n  \"eaushadhi_drug_id\": \"{{DRUG_ID}}\",\r\n  \"eaushadhi_drug_name\": \"Domperidone\",\r\n  \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\"\r\n}",
+                          "options": {
+                            "raw": {
+                              "language": "json"
+                            }
+                          }
+                        },
+                        "url": {
+                          "raw": "{{BASE_URL}}/api/care_eaushadhi/product-mappings/",
+                          "host": [
+                            "{{BASE_URL}}"
+                          ],
+                          "path": [
+                            "api",
+                            "care_eaushadhi",
+                            "product-mappings",
+                            ""
+                          ]
+                        }
+                      },
+                      "response": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Record Delivery + Record Item Delivery",
+          "item": [
+            {
+              "name": "Missing Fields",
+              "item": [
+                {
+                  "name": "Record_Deliveries",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    //\"facility_id\": \"baf1571c-bc1b-4c25-9d42-3c3361c58d54\",\r\n    \"inward_record_id\": \"{{INWARD_RECORD_ID}}\",\r\n    \"delivery_order_id\": \"{{DELIVERY_ORDER_ID}}\"\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/record-deliveries/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "record-deliveries",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Record_Item_Delivery",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{TOKEN}}",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\r\n    //\"facility_id\": \"baf1571c-bc1b-4c25-9d42-3c3361c58d54\",\r\n    \"record_delivery_id\": \"{{RECORD_DELIVERY_ID}}\",\r\n    \"record_item_id\": \"e958d03b-bc63-46e1-b0da-75431c18df28\",\r\n    \"supply_delivery_id\": \"{{SUPPLY_DELIVERY_ID}}\",\r\n    \"product_id\": \"{{PRODUCT_ID}}\",\r\n    \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\",\r\n    \"quantity_received\": 2000\r\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{BASE_URL}}/api/care_eaushadhi/record-item-deliveries/",
+                      "host": [
+                        "{{BASE_URL}}"
+                      ],
+                      "path": [
+                        "api",
+                        "care_eaushadhi",
+                        "record-item-deliveries",
+                        ""
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Validations",
+              "item": [
+                {
+                  "name": "Invalid UUID",
+                  "item": [
+                    {
+                      "name": "Record_Deliveries",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Authorization",
+                            "value": "Bearer {{TOKEN}}",
+                            "type": "text"
+                          },
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json",
+                            "type": "text"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\r\n    \"facility_id\": \"baf1571c-bc1b-4c25\",\r\n    \"inward_record_id\": \"{{INWARD_RECORD_ID}}\",\r\n    \"delivery_order_id\": \"{{DELIVERY_ORDER_ID}}\"\r\n}",
+                          "options": {
+                            "raw": {
+                              "language": "json"
+                            }
+                          }
+                        },
+                        "url": {
+                          "raw": "{{BASE_URL}}/api/care_eaushadhi/record-deliveries/",
+                          "host": [
+                            "{{BASE_URL}}"
+                          ],
+                          "path": [
+                            "api",
+                            "care_eaushadhi",
+                            "record-deliveries",
+                            ""
+                          ]
+                        }
+                      },
+                      "response": []
+                    },
+                    {
+                      "name": "Record_Item_Delivery",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Authorization",
+                            "value": "Bearer {{TOKEN}}",
+                            "type": "text"
+                          },
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json",
+                            "type": "text"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\r\n    \"facility_id\": \"baf1571c-bc1b-4\",\r\n    \"record_delivery_id\": \"{{RECORD_DELIVERY_ID}}\",\r\n    \"record_item_id\": \"e958d03b-bc63-46e1-b0da-75431c18df28\",\r\n    \"supply_delivery_id\": \"{{SUPPLY_DELIVERY_ID}}\",\r\n    \"product_id\": \"{{PRODUCT_ID}}\",\r\n    \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\",\r\n    \"quantity_received\": 2000\r\n}",
+                          "options": {
+                            "raw": {
+                              "language": "json"
+                            }
+                          }
+                        },
+                        "url": {
+                          "raw": "{{BASE_URL}}/api/care_eaushadhi/record-item-deliveries/",
+                          "host": [
+                            "{{BASE_URL}}"
+                          ],
+                          "path": [
+                            "api",
+                            "care_eaushadhi",
+                            "record-item-deliveries",
+                            ""
+                          ]
+                        }
+                      },
+                      "response": []
+                    }
+                  ]
+                },
+                {
+                  "name": "No Duplicates Allowed",
+                  "item": [
+                    {
+                      "name": "Record_Delivery",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Authorization",
+                            "value": "Bearer {{TOKEN}}",
+                            "type": "text"
+                          },
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json",
+                            "type": "text"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"inward_record_id\": \"{{INWARD_RECORD_ID}}\",\r\n    \"delivery_order_id\": \"{{DELIVERY_ORDER_ID}}\"\r\n}"
+                        },
+                        "url": {
+                          "raw": "{{BASE_URL}}/api/care_eaushadhi/record-deliveries/",
+                          "host": [
+                            "{{BASE_URL}}"
+                          ],
+                          "path": [
+                            "api",
+                            "care_eaushadhi",
+                            "record-deliveries",
+                            ""
+                          ]
+                        }
+                      },
+                      "response": []
+                    },
+                    {
+                      "name": "Record_Item_Deliveries",
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Authorization",
+                            "value": "Bearer {{TOKEN}}",
+                            "type": "text"
+                          },
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json",
+                            "type": "text"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\r\n    \"facility_id\": \"{{FACILITY_ID}}\",\r\n    \"record_delivery_id\": \"{{RECORD_DELIVERY_ID}}\",\r\n    \"record_item_id\": \"e958d03b-bc63-46e1-b0da-75431c18df28\",\r\n    \"supply_delivery_id\": \"{{SUPPLY_DELIVERY_ID}}\",\r\n    \"product_id\": \"{{PRODUCT_ID}}\",\r\n    \"product_knowledge_id\": \"{{PRODUCT_KNOWLEDGE_ID}}\",\r\n    \"quantity_received\": 2000\r\n}"
+                        },
+                        "url": {
+                          "raw": "{{BASE_URL}}/api/care_eaushadhi/record-item-deliveries/",
+                          "host": [
+                            "{{BASE_URL}}"
+                          ],
+                          "path": [
+                            "api",
+                            "care_eaushadhi",
+                            "record-item-deliveries",
+                            ""
+                          ]
+                        }
+                      },
+                      "response": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+
+}
