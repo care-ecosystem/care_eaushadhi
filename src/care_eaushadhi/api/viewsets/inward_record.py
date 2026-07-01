@@ -67,12 +67,9 @@ class InwardRecordViewSet(
 
         paginator = CareLimitOffsetPagination()
         page = paginator.paginate_queryset(items_queryset, request)
-        items_payload = {
-            "count": paginator.count,
-            "results": [
-                InwardRecordItemReadSpec.serialize(item).to_json() for item in page
-            ],
-        }
+        items_payload = [
+            InwardRecordItemReadSpec.serialize(item).to_json() for item in page
+        ]
 
         data = (
             self.get_retrieve_pydantic_model()
@@ -80,6 +77,7 @@ class InwardRecordViewSet(
                 instance,
                 request.user,
                 items=items_payload,
+                count=paginator.count,
                 **self.get_serializer_retrieve_context(),
             )
             .to_json()
