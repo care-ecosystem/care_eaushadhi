@@ -1,6 +1,7 @@
 from django_filters import rest_framework as filters
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import OrderingFilter
+from rest_framework.response import Response
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -9,12 +10,14 @@ from care.emr.api.viewsets.base import (
 )
 from care.facility.models import Facility
 from care.security.authorization.base import AuthorizationController
+from care.utils.pagination.care_pagination import CareLimitOffsetPagination
 from care.utils.shortcuts import get_object_or_404
 
 from care_eaushadhi.api.specs.inward_record import (
     InwardRecordListSpec,
     InwardRecordRetrieveSpec
 )
+from care_eaushadhi.api.specs.inward_record_item import InwardRecordItemReadSpec
 from care_eaushadhi.models.eaushadhi_inward_record import EAushadhiInwardRecord
 
 
@@ -50,6 +53,38 @@ class InwardRecordViewSet(
 
     def authorize_retrieve(self, instance):
         self._authorize_facility(instance.facility)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.authorize_retrieve(instance)
+
+        items_queryset = instance.items.prefetch_related("item_deliveries").order_by(
+            "pk"
+        )
+        warehouse_name = request.GET.get("warehouse_name")
+        if warehouse_name:
+            items_queryset = items_queryset.filter(warehouse_name__iexact=warehouse_name)
+
+        paginator = CareLimitOffsetPagination()
+        page = paginator.paginate_queryset(items_queryset, request)
+        items_payload = {
+            "count": paginator.count,
+            "results": [
+                InwardRecordItemReadSpec.serialize(item).to_json() for item in page
+            ],
+        }
+
+        data = (
+            self.get_retrieve_pydantic_model()
+            .serialize(
+                instance,
+                request.user,
+                items=items_payload,
+                **self.get_serializer_retrieve_context(),
+            )
+            .to_json()
+        )
+        return Response(data)
 
     def get_queryset(self):
         queryset = (

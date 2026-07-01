@@ -47,17 +47,14 @@ class InwardRecordListSpec(EMRResource):
 
 
 class InwardRecordRetrieveSpec(InwardRecordListSpec):
-    items: list[dict] = []
+    items: dict = {"count": 0, "results": []}
     deliveries: list[dict] = []
     meta: dict | None = None
 
     @classmethod
-    def perform_extra_serialization(cls, mapping, obj):
-        super().perform_extra_serialization(mapping, obj)
-        mapping["items"] = [
-            InwardRecordItemReadSpec.serialize(item).to_json()
-            for item in obj.items.prefetch_related("item_deliveries").all()
-        ]
+    def perform_extra_serialization(cls, mapping, obj, *args, items=None, **kwargs):
+        super().perform_extra_serialization(mapping, obj, *args, **kwargs)
+        mapping["items"] = items if items is not None else {"count": 0, "results": []}
         mapping["deliveries"] = [
             InwardRecordDeliveryReadSpec.serialize(d).to_json()
             for d in obj.deliveries.all()
