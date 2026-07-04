@@ -9,6 +9,7 @@ import logging
 
 from care_eaushadhi.api.validators.base import BaseResponseValidator
 from care_eaushadhi.api.validators.exceptions import ValidationError
+from care_eaushadhi.settings import plugin_settings as settings
 
 from .schemas import InventoryItem
 from .exceptions import (
@@ -84,6 +85,12 @@ class KarnatakaValidator(BaseResponseValidator[InventoryItem, InventoryItem]):
             )
             return []
 
+        # When EAUSHADHI_VALIDATION_ENABLED is False, every value-level check in
+        # InventoryItem (patterns, length/range bounds, cross-field business
+        # rules) is skipped via this context flag - only structural type
+        # parsing (dates, ints, enums) still happens, and nothing is dropped.
+        validate_context = {"skip_validation": not settings.EAUSHADHI_VALIDATION_ENABLED}
+
         # Validate each item
         validated_items: list[InventoryItem] = []
 
@@ -97,7 +104,7 @@ class KarnatakaValidator(BaseResponseValidator[InventoryItem, InventoryItem]):
                 )
 
                 # Use Pydantic to validate and normalize
-                validated_item = InventoryItem.model_validate(raw_item)
+                validated_item = InventoryItem.model_validate(raw_item, context=validate_context)
                 validated_items.append(validated_item)
 
                 logger.debug(

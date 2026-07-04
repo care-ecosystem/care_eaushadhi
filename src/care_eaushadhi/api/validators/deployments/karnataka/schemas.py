@@ -5,6 +5,7 @@ OBSERVED — only one value seen so far; treated as free-form
 GUESS — extrapolated from field name; not yet validated against data
 """
 
+import re
 from datetime import date
 from enum import Enum
 from typing import Annotated
@@ -13,54 +14,43 @@ from pydantic import (
     BaseModel,
     Field,
     StringConstraints,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
 
 
+def _validation_enabled(info: ValidationInfo) -> bool:
+    """Whether value-level checks (pattern/length/range/business rules) should run.
 
-InwardNo = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        pattern=r"^INI/WH/\d{4}-\d{2}/\d{6}/\d+$",
-    ),
-]
+    Controlled by EAUSHADHI_VALIDATION_ENABLED via the `skip_validation` context
+    key passed into model_validate(). Defaults to enabled if no context given.
+    """
+    return not (info.context and info.context.get("skip_validation"))
 
-InstituteId = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, pattern=r"^\d{6}$"),
-]
+
+INWARD_NO_PATTERN = r"^INI/WH/\d{4}-\d{2}/\d{6}/\d+$"
+INSTITUTE_ID_PATTERN = r"^\d{6}$"
+UNIT_PACK_PATTERN = r"^\d+(?:[xX]\d+[a-zA-Z]*)+$"
+DRUG_ID_PATTERN = r"^(?:[DM]\d{5}|\d+\.\d+\.\d+)$"
+
+# Plain string type - pattern/length constraints are enforced in field_validators
+# below (conditionally, based on EAUSHADHI_VALIDATION_ENABLED) rather than at the
+# type level, so they can be bypassed when validation is disabled.
+InwardNo = Annotated[str, StringConstraints(strip_whitespace=True)]
+InstituteId = Annotated[str, StringConstraints(strip_whitespace=True)]
 """6-digit zero-padded institute identifier. CONFIRMED."""
 
-UnitPackStr = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        pattern=r"^\d+(?:[xX]\d+[a-zA-Z]*)+$",
-    ),
-]
+UnitPackStr = Annotated[str, StringConstraints(strip_whitespace=True)]
 """Multi-dimensional pack size notation. OBSERVED: all samples use "1x10x10"."""
 
-DrugId = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        pattern=r"^(?:[DM]\d{5}|\d+\.\d+\.\d+)$",
-    ),
-]
+DrugId = Annotated[str, StringConstraints(strip_whitespace=True)]
 """Drug identifier in two formats. CONFIRMED across samples."""
 
-BatchNumber = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=64),
-]
+BatchNumber = Annotated[str, StringConstraints(strip_whitespace=True)]
 """Batch number. OBSERVED: free-form string with length bounds."""
 
-NonEmptyStr = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1),
-]
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True)]
 """Non-empty string."""
 
 
@@ -101,7 +91,7 @@ class YesNo(str, Enum):
 class InventoryItem(BaseModel):
     """A single inwarded stock line item from Karnataka eAushadhi API."""
 
-    sl_no: int = Field(alias="Sl_No", ge=1)
+    sl_no: int = Field(alias="Sl_No")
     inwardno: InwardNo
     instituteid: InstituteId
     institute_name: NonEmptyStr = Field(alias="Institute_name")
@@ -110,10 +100,10 @@ class InventoryItem(BaseModel):
     batch_number: BatchNumber = Field(alias="Batch_number")
     mfg_date: date = Field(alias="Mfg_date")
     exp_date: date = Field(alias="Exp_date")
-    quantity_in_pack: int = Field(alias="Quantity_In_Pack", ge=0)
+    quantity_in_pack: int = Field(alias="Quantity_In_Pack")
     unit_pack: UnitPackStr = Field(alias="UnitPack")
-    quantity_in_units: int = Field(alias="Quantity_In_Units", ge=0)
-    available_quantity: int = Field(alias="Available_quantity", ge=0)
+    quantity_in_units: int = Field(alias="Quantity_In_Units")
+    available_quantity: int = Field(alias="Available_quantity")
     warehouse_name: NonEmptyStr = Field(alias="Warehouse_name")
     drug_id: DrugId = Field(alias="Drug_id")
     drug_name: NonEmptyStr = Field(alias="Drug_name")
@@ -134,9 +124,74 @@ class InventoryItem(BaseModel):
             return " ".join(v.split())
         return v
 
+    @field_validator("sl_no", mode="after")
+    @classmethod
+    def _check_sl_no(cls, v: int, info: ValidationInfo) -> int:
+        if _validation_enabled(info) and v < 1:
+            raise ValueError(f"Sl_No must be >= 1, got {v}")
+        return v
+
+    @field_validator("quantity_in_pack", "quantity_in_units", "available_quantity", mode="after")
+    @classmethod
+    def _check_non_negative(cls, v: int, info: ValidationInfo) -> int:
+        if _validation_enabled(info) and v < 0:
+            raise ValueError(f"Value must be >= 0, got {v}")
+        return v
+
+    @field_validator(
+        "institute_name", "warehouse_name", "drug_name", "dose",
+        "batch_number", "inwardno", "instituteid", "unit_pack", "drug_id",
+        mode="after",
+    )
+    @classmethod
+    def _check_non_empty(cls, v: str) -> str:
+        """Required fields must never be blank - always enforced, regardless
+        of EAUSHADHI_VALIDATION_ENABLED. Only value-correctness (format,
+        ranges, cross-field business rules) is skippable."""
+        if not v:
+            raise ValueError("Value must not be empty")
+        return v
+
+    @field_validator("batch_number", mode="after")
+    @classmethod
+    def _check_batch_number_length(cls, v: str, info: ValidationInfo) -> str:
+        if _validation_enabled(info) and len(v) > 64:
+            raise ValueError(f"Batch_number length must be <= 64, got {len(v)}")
+        return v
+
+    @field_validator("inwardno", mode="after")
+    @classmethod
+    def _check_inwardno_pattern(cls, v: str, info: ValidationInfo) -> str:
+        if _validation_enabled(info) and not re.match(INWARD_NO_PATTERN, v):
+            raise ValueError(f"inwardno {v!r} does not match expected pattern")
+        return v
+
+    @field_validator("instituteid", mode="after")
+    @classmethod
+    def _check_instituteid_pattern(cls, v: str, info: ValidationInfo) -> str:
+        if _validation_enabled(info) and not re.match(INSTITUTE_ID_PATTERN, v):
+            raise ValueError(f"instituteid {v!r} does not match expected pattern")
+        return v
+
+    @field_validator("unit_pack", mode="after")
+    @classmethod
+    def _check_unit_pack_pattern(cls, v: str, info: ValidationInfo) -> str:
+        if _validation_enabled(info) and not re.match(UNIT_PACK_PATTERN, v):
+            raise ValueError(f"UnitPack {v!r} does not match expected pattern")
+        return v
+
+    @field_validator("drug_id", mode="after")
+    @classmethod
+    def _check_drug_id_pattern(cls, v: str, info: ValidationInfo) -> str:
+        if _validation_enabled(info) and not re.match(DRUG_ID_PATTERN, v):
+            raise ValueError(f"Drug_id {v!r} does not match expected pattern")
+        return v
+
     @model_validator(mode="after")
-    def _check_inwardno_matches_institute(self) -> "InventoryItem":
+    def _check_inwardno_matches_institute(self, info: ValidationInfo) -> "InventoryItem":
         """CONFIRMED: inwardno institute segment must equal instituteid."""
+        if not _validation_enabled(info):
+            return self
         segments = self.inwardno.split("/")
         if len(segments) >= 4 and segments[3] != self.instituteid:
             msg = (
@@ -147,8 +202,10 @@ class InventoryItem(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _check_dates(self) -> "InventoryItem":
+    def _check_dates(self, info: ValidationInfo) -> "InventoryItem":
         """Validate date ordering: mfg_date < exp_date, receipt_date >= mfg_date."""
+        if not _validation_enabled(info):
+            return self
         if self.mfg_date >= self.exp_date:
             msg = (
                 f"Mfg_date {self.mfg_date} must be before "
@@ -166,8 +223,10 @@ class InventoryItem(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _check_quantities(self) -> "InventoryItem":
+    def _check_quantities(self, info: ValidationInfo) -> "InventoryItem":
         """Validate quantity relationships: available <= in_pack, units = pack * units_per_pack."""
+        if not _validation_enabled(info):
+            return self
         if self.available_quantity > self.quantity_in_pack:
             msg = (
                 f"Available_quantity ({self.available_quantity}) cannot exceed "
