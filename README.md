@@ -103,10 +103,15 @@ care_eaushadhi_plug = Plug(
         "EAUSHADHI_API_ENDPOINT": "https://aushada.karnataka.gov.in/e-services/api/instinward/eGovuser",
         "EAUSHADHI_API_SECRET_KEY": "your-base64-encoded-credentials",  # Base64 encoded credentials
         "EAUSHADHI_API_RETRY_COUNT": 5,
-        "EAUSHADHI_API_TIMEOUT": 30,
-        "EAUSHADHI_API_CONNECT_TIMEOUT": 10,
-        "EAUSHADHI_API_READ_TIMEOUT": 30,
-        "EAUSHADHI_API_VERIFY_SSL": True,
+        "EAUSHADHI_DEPLOYMENT": "karnataka",
+        "EAUSHADHI_STRICT_QUANTITY_VALIDATION": True,
+
+      #   Optional Configs:
+      #   "EAUSHADHI_API_TIMEOUT": 30,
+      #   "EAUSHADHI_API_CONNECT_TIMEOUT": 10,
+      #   "EAUSHADHI_API_READ_TIMEOUT": 30,
+      #   "EAUSHADHI_API_VERIFY_SSL": True,
+      #   "EAUSHADHI_VALIDATION_ENABLED": False
 
         # Optional: Proxy settings
         # "EAUSHADHI_API_PROXY_HTTP": "",
@@ -194,8 +199,8 @@ The following configuration variables are available for care_eaushadhi:
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `EAUSHADHI_API_ENDPOINT` | eAushadhi API endpoint URL (Karnataka-specific) | `https://aushada.karnataka.gov.in/e-services/api/instinward/eGovuser` | No |
-| `EAUSHADHI_API_SECRET_KEY` | Base64 encoded credentials for eAushadhi API | `base_encoded_secret_key` | No |
+| `EAUSHADHI_API_ENDPOINT` | eAushadhi API endpoint URL (Karnataka-specific) | `https://aushada.karnataka.gov.in/e-services/api/instinward/eGovuser` | Yes |
+| `EAUSHADHI_API_SECRET_KEY` | Base64 encoded credentials for eAushadhi API | `base_encoded_secret_key` | Yes |
 | `EAUSHADHI_API_RETRY_COUNT` | Maximum retry attempts for failed API calls | `5` | No |
 | `EAUSHADHI_API_TIMEOUT` | Overall API request timeout in seconds | `30` | No |
 | `EAUSHADHI_API_CONNECT_TIMEOUT` | Connection timeout in seconds | `10` | No |
@@ -204,6 +209,9 @@ The following configuration variables are available for care_eaushadhi:
 | `EAUSHADHI_API_PROXY_HTTP` | HTTP proxy URL (if needed) | `""` (empty) | No |
 | `EAUSHADHI_API_PROXY_HTTPS` | HTTPS proxy URL (if needed) | `""` (empty) | No |
 | `SIMILARITY_THRESHOLD` | Similarity threshold for product mapping (0.0 to 1.0) | `0.2` | No |
+| `EAUSHADHI_STRICT_QUANTITY_VALIDATION` | Enables strict validation of received quantities | `True` | No|
+| `EAUSHADHI_DEPLOYMENT` | Custom validation checks for each states | `""` (empty) | Yes |
+| `EAUSHADHI_VALIDATION_ENABLED` | Enables or Disables validation for eAushadhi API responses | `True` | No|
 
 **Note**: All variables can be overridden via environment variables. The plugin will check PLUGIN_CONFIGS first, then environment variables, then fall back to defaults.
 
