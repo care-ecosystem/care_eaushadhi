@@ -42,6 +42,12 @@ class ProductMappingCreateSpec(EMRResource):
         except ObjectDoesNotExist:
             raise RestFrameworkValidationError("ProductKnowledge not found")
 
+        # Validate that ProductKnowledge is active
+        if obj.product_knowledge.status != "active":
+            raise RestFrameworkValidationError(
+                f"ProductKnowledge is not active. Current status: {obj.product_knowledge.status}"
+            )
+
         obj.mapping_type = self.mapping_type.value
         return obj
 

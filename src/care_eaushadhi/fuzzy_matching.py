@@ -102,6 +102,7 @@ def get_fuzzy_suggestions(drug_name: str, facility, limit: int = 10):
     Return a list of ProductKnowledge objects annotated with .similarity,
     using three signals and an optional dosage-form pre-filter.
     Only includes facility-scoped records for the given facility.
+    Only includes active ProductKnowledge records.
 
     The dosage-form filter is tried first for better precision. If it yields
     no results (e.g. CARE only has Paracetamol as a tablet but the eAushadhi
@@ -112,7 +113,7 @@ def get_fuzzy_suggestions(drug_name: str, facility, limit: int = 10):
     normalized = normalize_drug_name(drug_name)
     dosage_form = extract_dosage_form_filter(drug_name)
 
-    base_qs = ProductKnowledge.objects.filter(facility=facility)
+    base_qs = ProductKnowledge.objects.filter(facility=facility, status="active")
 
     def _ranked(qs, include_full_sim=False):
         # full_sim compares the entire normalised eAushadhi name (including form
