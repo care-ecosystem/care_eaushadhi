@@ -200,7 +200,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EAUSHADHI_API_VERIFY_SSL` - SSL verification flag (default: True)
 - `EAUSHADHI_API_PROXY_HTTP` - HTTP proxy URL (optional)
 - `EAUSHADHI_API_PROXY_HTTPS` - HTTPS proxy URL (optional)
-- `EAUSHADHI_SIMILARITY_THRESHOLD` - Product mapping similarity threshold (default: 0.2)
+- `EAUSHADHI_SIMILARITY_THRESHOLD` - Product mapping similarity threshold (default: 0.3)
 
 All settings support three-tier configuration:
 1. PLUGIN_CONFIGS in Django settings (highest priority)

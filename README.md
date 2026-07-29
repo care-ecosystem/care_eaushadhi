@@ -118,7 +118,7 @@ care_eaushadhi_plug = Plug(
         # "EAUSHADHI_API_PROXY_HTTPS": "",
 
         # Product mapping similarity threshold (0.0 to 1.0)
-        # "EAUSHADHI_SIMILARITY_THRESHOLD": 0.2,
+        # "EAUSHADHI_SIMILARITY_THRESHOLD": 0.3,
     },
 )
 
@@ -208,7 +208,7 @@ The following configuration variables are available for care_eaushadhi:
 | `EAUSHADHI_API_VERIFY_SSL` | Verify SSL certificates for API calls | `True` | No |
 | `EAUSHADHI_API_PROXY_HTTP` | HTTP proxy URL (if needed) | `""` (empty) | No |
 | `EAUSHADHI_API_PROXY_HTTPS` | HTTPS proxy URL (if needed) | `""` (empty) | No |
-| `EAUSHADHI_SIMILARITY_THRESHOLD` | Similarity threshold for product mapping (0.0 to 1.0) | `0.2` | No |
+| `EAUSHADHI_SIMILARITY_THRESHOLD` | Similarity threshold for product mapping (0.0 to 1.0) | `0.3` | No |
 | `EAUSHADHI_STRICT_QUANTITY_VALIDATION` | Enables strict validation of received quantities | `True` | No|
 | `EAUSHADHI_DEPLOYMENT` | Custom validation checks for each states | `""` (empty) | Yes |
 | `EAUSHADHI_VALIDATION_ENABLED` | Enables or Disables validation for eAushadhi API responses | `True` | No|
