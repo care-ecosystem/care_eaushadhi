@@ -133,7 +133,7 @@ def get_fuzzy_suggestions(drug_name: str, facility, limit: int = 10):
         return list(
             qs.annotate(**annotations)
             .annotate(similarity=Greatest(*greatest_inputs, output_field=FloatField()))
-            .filter(similarity__gt=settings.SIMILARITY_THRESHOLD)
+            .filter(similarity__gt=settings.EAUSHADHI_SIMILARITY_THRESHOLD)
             .order_by("-similarity")
             .select_related("category", "facility")
             [:limit]
