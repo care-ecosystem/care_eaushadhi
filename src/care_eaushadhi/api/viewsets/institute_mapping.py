@@ -66,21 +66,11 @@ class InstituteMappingViewSet(
     lookup_field = "external_id"
 
     def _authorize_facility(self, facility):
-        """Check if user can view/search eAushadhi data"""
         if not AuthorizationController.call(
             "can_use_eaushadhi_integration", self.request.user, facility
         ):
             raise PermissionDenied(
                 "You are not authorized to use eAushadhi plugin for this facility"
-            )
-
-    def _authorize_facility_manage(self, facility):
-        """Check if user can create/update eAushadhi mappings"""
-        if not AuthorizationController.call(
-            "can_manage_eaushadhi_integration", self.request.user, facility
-        ):
-            raise PermissionDenied(
-                "You are not authorized to manage eAushadhi mappings for this facility"
             )
 
     def authorize_retrieve(self, instance):
@@ -124,7 +114,7 @@ class InstituteMappingViewSet(
 
         # Check if facility already has a mapping
         facility = get_object_or_404(Facility, external_id=spec.facility_id)
-        self._authorize_facility_manage(facility)
+        self._authorize_facility(facility)
         if EAushadhiInstituteMapping.objects.filter(facility=facility, deleted=False).exists():
             return Response(
                 {"error": "Institute mapping already exists for this facility"},
@@ -207,7 +197,7 @@ class InstituteMappingViewSet(
         """
         # Get the existing institute mapping
         instance = self.get_object()
-        self._authorize_facility_manage(instance.facility)
+        self._authorize_facility(instance.facility)
 
         # Parse and validate input (all fields optional for PATCH)
         spec = InstituteMappingUpdateSpec(**request.data)
@@ -264,7 +254,7 @@ class InstituteMappingViewSet(
     )
     def replace_supplier_mappings(self, request, *args, **kwargs):
         institute_mapping = self.get_object()
-        self._authorize_facility_manage(institute_mapping.facility)
+        self._authorize_facility(institute_mapping.facility)
 
         supplier_mappings_data = request.data.get("supplier_mappings")
         if not isinstance(supplier_mappings_data, list) or not supplier_mappings_data:
