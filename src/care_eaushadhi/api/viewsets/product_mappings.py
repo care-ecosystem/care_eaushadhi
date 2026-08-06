@@ -39,11 +39,21 @@ class ProductMappingViewSet(
     http_method_names = ["get", "post", "patch"]
 
     def _authorize_facility(self, facility):
+        """Check if user can view/search eAushadhi data"""
         if not AuthorizationController.call(
             "can_use_eaushadhi_integration", self.request.user, facility
         ):
             raise PermissionDenied(
                 "You are not authorized to use eAushadhi plugin for this facility"
+            )
+
+    def _authorize_facility_manage(self, facility):
+        """Check if user can create/update eAushadhi mappings"""
+        if not AuthorizationController.call(
+            "can_manage_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to manage eAushadhi mappings for this facility"
             )
 
     database_model = EAushadhiProductMapping
@@ -56,7 +66,7 @@ class ProductMappingViewSet(
     def authorize_create(self, instance):
         if instance.facility_id:
             facility = get_object_or_404(Facility, external_id=instance.facility_id)
-            self._authorize_facility(facility)
+            self._authorize_facility_manage(facility)
         elif not self.request.user.is_superuser:
             raise PermissionDenied(
                 "Only superusers can create global product mappings"
@@ -64,7 +74,7 @@ class ProductMappingViewSet(
 
     def authorize_update(self, request_obj, model_instance):
         if model_instance.facility:
-            self._authorize_facility(model_instance.facility)
+            self._authorize_facility_manage(model_instance.facility)
         elif not self.request.user.is_superuser:
             raise PermissionDenied(
                 "Only superusers can update global product mappings"
