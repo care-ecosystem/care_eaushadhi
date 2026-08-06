@@ -40,6 +40,7 @@ This plugin was developed as part of the eGov Foundation's initiative to enhance
   - Map eAushadhi drug IDs to CARE's product knowledge base
   - Support multiple mappings per drug for flexibility
   - Search and fuzzy matching capabilities
+  - Bulk import via Django management command
   - Metadata storage for additional context
 
 - **Inward Record Management**
@@ -391,6 +392,36 @@ pytest tests/test_models.py::TestInstituteMapping
 ```
 
 For detailed testing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Management Commands
+
+### Bulk Import Product Mappings
+
+The plugin provides a Django management command for bulk importing product mappings from CSV files.
+
+```bash
+# Basic usage
+python manage.py import_product_mappings <csv_file> --facility <facility_external_id>
+
+# Example
+python manage.py import_product_mappings Mappingsheet.csv \
+  --facility 063f7b33-33a5-4228-8bfd-d736f73d3655
+
+# Dry run to validate CSV without importing
+python manage.py import_product_mappings data.csv \
+  --facility 063f7b33-33a5-4228-8bfd-d736f73d3655 \
+  --dry-run
+```
+
+**CSV Format**: The CSV file must contain these columns:
+- `EAushadhi Drug ID` (required)
+- `EAushadhi Drug Name` (required)
+- `Product Knowledge Name` (optional, for reference)
+- `Product Knowledge Slug` (required, without facility prefix)
+
+**Deployment**: CSV files are gitignored. For production deployments, see:
+- [Product Mapping Import Guide](docs/PRODUCT_MAPPING_IMPORT.md) - Command usage and CSV format
+- [CSV Deployment Guide](docs/DEPLOYMENT_CSV_MANAGEMENT.md) - Docker, Kubernetes, S3, and deployment strategies
 
 ## Contributing
 
