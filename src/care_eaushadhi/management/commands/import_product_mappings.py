@@ -170,7 +170,7 @@ class Command(BaseCommand):
                 existing_pk = ProductKnowledge.objects.filter(
                     slug__in=facility_slugs.keys(),
                     facility=facility,
-                    is_active=True,
+                    deleted=False,
                 ).values_list("slug", flat=True)
 
                 existing_pk_set = set(existing_pk)
@@ -267,7 +267,7 @@ class Command(BaseCommand):
                     for pk in ProductKnowledge.objects.filter(
                         slug__in=facility_slugs.keys(),
                         facility=facility,
-                        is_active=True,
+                        deleted=False,
                     )
                 }
 
