@@ -16,4 +16,11 @@ class EAushadhiAccess(AuthorizationHandler):
             facility=facility,
         )
 
+    def can_manage_eaushadhi_integration(self, user, facility):
+        return self.check_permission_in_facility_organization(
+            [EAushadhiPermissions.can_manage_eaushadhi_integration.name],
+            user,
+            facility=facility,
+        )
+
 AuthorizationController.register_internal_controller(EAushadhiAccess)
