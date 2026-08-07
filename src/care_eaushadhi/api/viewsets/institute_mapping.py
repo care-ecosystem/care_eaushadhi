@@ -67,7 +67,7 @@ class InstituteMappingViewSet(
 
     def _authorize_facility(self, facility):
         if not AuthorizationController.call(
-            "can_use_eaushadhi_integration", self.request.user, facility
+            "can_manage_eaushadhi_integration", self.request.user, facility
         ):
             raise PermissionDenied(
                 "You are not authorized to use eAushadhi plugin for this facility"

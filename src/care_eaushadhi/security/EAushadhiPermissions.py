@@ -13,5 +13,11 @@ class EAushadhiPermissions(enum.Enum):
         "Can Use eAushadhi Integration In Facility",
         "",
         PermissionContext.FACILITY,
+        [FACILITY_ADMIN_ROLE, ADMIN_ROLE, PHARMACIST_ROLE],
+    )
+    can_manage_eaushadhi_integration = Permission(
+        "Can Manage eAushadhi Integration In Facility",
+        "",
+        PermissionContext.FACILITY,
         [FACILITY_ADMIN_ROLE, ADMIN_ROLE],
     )
