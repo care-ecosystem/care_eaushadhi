@@ -46,6 +46,14 @@ class ProductMappingViewSet(
                 "You are not authorized to use eAushadhi plugin for this facility"
             )
 
+    def _authorize_manage_facility(self, facility):
+        if not AuthorizationController.call(
+            "can_manage_eaushadhi_integration", self.request.user, facility
+        ):
+            raise PermissionDenied(
+                "You are not authorized to manage eAushadhi plugin for this facility"
+            )
+
     database_model = EAushadhiProductMapping
 
     pydantic_model = ProductMappingCreateSpec
@@ -56,7 +64,7 @@ class ProductMappingViewSet(
     def authorize_create(self, instance):
         if instance.facility_id:
             facility = get_object_or_404(Facility, external_id=instance.facility_id)
-            self._authorize_facility(facility)
+            self._authorize_manage_facility(facility)
         elif not self.request.user.is_superuser:
             raise PermissionDenied(
                 "Only superusers can create global product mappings"
@@ -64,7 +72,7 @@ class ProductMappingViewSet(
 
     def authorize_update(self, request_obj, model_instance):
         if model_instance.facility:
-            self._authorize_facility(model_instance.facility)
+            self._authorize_manage_facility(model_instance.facility)
         elif not self.request.user.is_superuser:
             raise PermissionDenied(
                 "Only superusers can update global product mappings"

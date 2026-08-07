@@ -58,9 +58,10 @@ class RecordItemDeliveryViewSet(
                 "You are not authorized to use eAushadhi plugin for this facility"
             )
 
-    def perform_create(self, instance):
-
+    def authorize_create(self, instance):
         self._authorize_facility(instance.facility)
+
+    def perform_create(self, instance):
         instance.created_by = self.request.user
         instance.updated_by = self.request.user
 
@@ -76,7 +77,7 @@ class RecordItemDeliveryViewSet(
         eaushadhi_drug_id = delivery_item.inward_record_item.drug_id
         product_knowledge = delivery_item.product_knowledge
         eaushadhi_drug_name = delivery_item.inward_record_item.drug_name
- 
+
         mapping, created = EAushadhiProductMapping.objects.get_or_create(
             facility=facility,
             eaushadhi_drug_id=eaushadhi_drug_id,
@@ -89,7 +90,7 @@ class RecordItemDeliveryViewSet(
                 'updated_by': self.request.user,
             }
         )
- 
+
         if not created:
             from django.db.models import F
             EAushadhiProductMapping.objects.filter(pk=mapping.pk).update(
@@ -130,7 +131,7 @@ class RecordItemDeliveryViewSet(
 
         instance = self.get_object()
         return Response(self.handle_update(instance, request.data))
-    
+
     def authorize_update(self, request_obj, model_instance):
         self._authorize_facility(model_instance.facility)
 
