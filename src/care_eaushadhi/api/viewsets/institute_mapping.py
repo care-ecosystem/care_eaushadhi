@@ -84,6 +84,9 @@ class InstituteMappingViewSet(
     def authorize_retrieve(self, instance):
         self._authorize_facility(instance.facility)
 
+    def authorize_update(self, request_obj, model_instance):
+        self._authorize_manage_facility(model_instance.facility)
+
     def get_queryset(self):
         queryset = (
             super()
@@ -106,6 +109,10 @@ class InstituteMappingViewSet(
                 facility = get_object_or_404(Facility, external_id=facility_id)
                 self._authorize_facility(facility)
                 return queryset.filter(facility=facility)
+            if not self.request.user.is_superuser:
+                raise PermissionDenied(
+                    "facility_id is required to list institute mappings"
+                )
         return queryset
 
     def create(self, request, *args, **kwargs):
