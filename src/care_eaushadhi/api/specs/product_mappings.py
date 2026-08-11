@@ -93,12 +93,16 @@ class ProductMappingUpdateSpec(EMRResource):
     last_used_date: datetime | None = None
 
     def perform_extra_deserialization(self, is_update, obj):
-        if self.eaushadhi_drug_id is not None:
+        provided_fields = self.model_fields_set
+
+        if "eaushadhi_drug_id" in provided_fields:
             obj.eaushadhi_drug_id = self.eaushadhi_drug_id
-        if self.eaushadhi_drug_name is not None:
+        if "eaushadhi_drug_name" in provided_fields:
             obj.eaushadhi_drug_name = self.eaushadhi_drug_name
-        if self.usage_count is not None:
+        if "usage_count" in provided_fields:
             obj.usage_count = self.usage_count
-        if self.last_used_date is not None:
+        if "last_used_date" in provided_fields:
             obj.last_used_date = self.last_used_date
+
+        obj._update_fields = provided_fields | {"updated_by_id", "modified_date"}
         return obj
