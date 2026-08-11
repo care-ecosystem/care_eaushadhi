@@ -87,10 +87,18 @@ class ProductMappingReadSpec(EMRResource):
 class ProductMappingUpdateSpec(EMRResource):
     __model__ = EAushadhiProductMapping
 
-    usage_count: int
-    last_used_date: datetime
+    eaushadhi_drug_id: str | None = None
+    eaushadhi_drug_name: str | None = None
+    usage_count: int | None = None
+    last_used_date: datetime | None = None
 
     def perform_extra_deserialization(self, is_update, obj):
-        obj.usage_count = self.usage_count
-        obj.last_used_date = self.last_used_date
+        if self.eaushadhi_drug_id is not None:
+            obj.eaushadhi_drug_id = self.eaushadhi_drug_id
+        if self.eaushadhi_drug_name is not None:
+            obj.eaushadhi_drug_name = self.eaushadhi_drug_name
+        if self.usage_count is not None:
+            obj.usage_count = self.usage_count
+        if self.last_used_date is not None:
+            obj.last_used_date = self.last_used_date
         return obj
