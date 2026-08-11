@@ -1,4 +1,4 @@
-from pydantic import UUID4
+from pydantic import UUID4, Field
 from datetime import datetime
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -21,8 +21,8 @@ class ProductMappingCreateSpec(EMRResource):
     __model__ = EAushadhiProductMapping
 
     facility_id: UUID4 | None = None
-    eaushadhi_drug_id: str
-    eaushadhi_drug_name: str
+    eaushadhi_drug_id: str = Field(min_length=1, max_length=255)
+    eaushadhi_drug_name: str = Field(min_length=1, max_length=500)
     product_knowledge_id: UUID4
     mapping_type: ProductMappingType = ProductMappingType.MANUAL
 
@@ -87,10 +87,27 @@ class ProductMappingReadSpec(EMRResource):
 class ProductMappingUpdateSpec(EMRResource):
     __model__ = EAushadhiProductMapping
 
-    usage_count: int
-    last_used_date: datetime
+    eaushadhi_drug_id: str | None = Field(default=None, min_length=1, max_length=255)
+    eaushadhi_drug_name: str | None = Field(default=None, min_length=1, max_length=500)
+    usage_count: int | None = None
+    last_used_date: datetime | None = None
 
     def perform_extra_deserialization(self, is_update, obj):
-        obj.usage_count = self.usage_count
-        obj.last_used_date = self.last_used_date
+        provided_fields = self.model_fields_set
+        update_fields = set()
+
+        if "eaushadhi_drug_id" in provided_fields and self.eaushadhi_drug_id is not None:
+            obj.eaushadhi_drug_id = self.eaushadhi_drug_id
+            update_fields.add("eaushadhi_drug_id")
+        if "eaushadhi_drug_name" in provided_fields and self.eaushadhi_drug_name is not None:
+            obj.eaushadhi_drug_name = self.eaushadhi_drug_name
+            update_fields.add("eaushadhi_drug_name")
+        if "usage_count" in provided_fields and self.usage_count is not None:
+            obj.usage_count = self.usage_count
+            update_fields.add("usage_count")
+        if "last_used_date" in provided_fields and self.last_used_date is not None:
+            obj.last_used_date = self.last_used_date
+            update_fields.add("last_used_date")
+
+        obj._update_fields = update_fields | {"updated_by_id", "modified_date"}
         return obj

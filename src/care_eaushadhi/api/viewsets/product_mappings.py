@@ -124,20 +124,33 @@ class ProductMappingViewSet(
 
         return queryset
     def perform_update(self, instance):
-        # Only write the two usage fields — avoids touching unrelated columns
         instance.updated_by = self.request.user
         instance.modified_date = timezone.now()
-        instance.save(update_fields=["usage_count", "last_used_date", "updated_by_id", "modified_date"])
+        update_fields = list(getattr(instance, "_update_fields", {"updated_by_id", "modified_date"}))
+        instance.save(update_fields=update_fields)
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        allowed_fields = {"usage_count", "last_used_date"}
+        allowed_fields = {"eaushadhi_drug_id", "eaushadhi_drug_name", "usage_count", "last_used_date"}
         unexpected = set(request.data.keys()) - allowed_fields
         if unexpected:
             raise RestFrameworkValidationError(
-                f"Only usage_count and last_used_date can be updated. Unexpected fields: {unexpected}"
+                f"Only eaushadhi_drug_id, eaushadhi_drug_name, usage_count and last_used_date can be updated. Unexpected fields: {unexpected}"
             )
-        return Response(self.handle_update(instance, request.data))
+        try:
+            return Response(self.handle_update(instance, request.data))
+        except IntegrityError:
+            return Response(
+                {
+                    "errors": [
+                        {
+                            "type": "conflict",
+                            "msg": "A mapping with this eAushadhi drug, product knowledge and mapping type already exists",
+                        }
+                    ]
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
     def create(self, request, *args, **kwargs):
         try:
