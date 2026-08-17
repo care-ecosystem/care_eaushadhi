@@ -1,4 +1,5 @@
 from decimal import Decimal
+import re
 import time
 import logging
 import json
@@ -288,11 +289,11 @@ def fetch_inward_from_eaushadi(
                 manufactured_date = _parse_date(item.get("mfg_date"))
                 expiry_date = _parse_date(item.get("exp_date"))
                 receipt_date = _parse_date(item.get("receipt_date"))
-                unit_pack_raw = item.get("unit_pack")
+                unit_pack_raw = _extract_unit_pack_from_drug_name(drug_name)
                 unit_pack = _parse_unit_pack(unit_pack_raw)
                 dose = item.get("dose")
-                quantity_in_units = item.get("quantity_in_units")
                 quantity_received_current = item.get("quantity_in_pack")
+                quantity_in_units = Decimal(quantity_received_current or 0) * unit_pack
                 warehouse_name = item.get("eaushadhi_warehouse_name")
 
 
@@ -533,19 +534,45 @@ def _parse_date(value: str | None) -> date | None:
         return None
 
 
+DRUG_NAME_UNIT_PACK_PATTERN = re.compile(
+    r"(\d+(?:\s*[xX]\s*\d+)+(?:\s*[a-zA-Z]+)*)\s*$"
+)
+
+
+def _extract_unit_pack_from_drug_name(drug_name: str) -> str | None:
+    """
+    Extract the pack-size suffix from the end of a Drug_name string,
+    """
+    if not drug_name:
+        return None
+    match = DRUG_NAME_UNIT_PACK_PATTERN.search(drug_name.strip())
+    if not match:
+        logger.warning("Could not find unit pack suffix in Drug_name: %r", drug_name)
+        return None
+    return match.group(1)
+
+
 def _parse_unit_pack(raw: str) -> Decimal:
     """
-    Convert UnitPack strings like "1x10x10" to a numeric value by multiplying
-    all parts. Falls back to 1.0 if unparseable.
+    Convert a pack-size suffix into the number of individual countable units
+    per pack
+    Falls back to 1 if unparseable.
     """
     if not raw:
         return Decimal("1")
+    segments = [p.strip() for p in raw.lower().split("x") if p.strip()]
+    if not segments:
+        return Decimal("1")
     try:
-        parts = [Decimal(p) for p in raw.lower().split("x") if p.strip()]
         result = Decimal("1")
-        for p in parts:
-            result *= p
+        last_index = len(segments) - 1
+        for index, seg in enumerate(segments):
+            if seg.isdigit():
+                result *= Decimal(seg)
+            elif index != last_index:
+                logger.warning("Could not parse unit pack: %r, defaulting to 1", raw)
+                return Decimal("1")
         return result
     except (ValueError, TypeError, ArithmeticError):
-        logger.warning("Could not parse UnitPack: %r, defaulting to 1.0", raw)
+        logger.warning("Could not parse unit pack: %r, defaulting to 1", raw)
         return Decimal("1")
