@@ -59,7 +59,11 @@ class RecordItemDeliveryViewSet(
             )
 
     def authorize_create(self, instance):
-        self._authorize_facility(instance.facility)
+        try:
+            facility = Facility.objects.get(external_id=instance.facility_id)
+        except Facility.DoesNotExist:
+            raise ValidationError("Facility not found")
+        self._authorize_facility(facility)
 
     def perform_create(self, instance):
         instance.created_by = self.request.user
