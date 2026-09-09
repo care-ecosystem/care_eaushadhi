@@ -203,3 +203,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# care_eaushadhi specific
+# Ignore CSV files in data directory (user data)
+src/care_eaushadhi/data/*.csv
+# Keep sample CSV for reference
+!src/care_eaushadhi/data/sample.csv
+
+
