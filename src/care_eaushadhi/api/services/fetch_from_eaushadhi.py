@@ -13,7 +13,10 @@ import json
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from care_eaushadhi.settings import plugin_settings as settings
+from care_eaushadhi.settings import (
+    plugin_settings as settings,
+    EAUSHADHI_API_ENDPOINT,
+)
 from care_eaushadhi.api.validators import (
     KarnatakaResponseService,
     ValidationError,
@@ -49,9 +52,9 @@ class EAushadhiService:
         """
         inward_date_ddmmyyyy = date.fromisoformat(
             inward_date).strftime("%d/%m/%Y")
-        
+
         try:
-            url = settings.EAUSHADHI_API_ENDPOINT
+            url = EAUSHADHI_API_ENDPOINT
 
             # Configure request-level retries for connection errors
             retry_strategy = Retry(
