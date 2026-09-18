@@ -1,7 +1,19 @@
+import sys
+
 from django.apps import AppConfig
 from django.utils.translation import gettext_lazy as _
 
 PLUGIN_NAME = "care_eaushadhi"
+
+BUILD_TIME_COMMANDS = {
+    "collectstatic",
+    "makemigrations",
+    "migrate",
+    "compilemessages",
+    "makemessages",
+    "spectacular",
+    "test",
+}
 
 
 class Care_eaushadhiConfig(AppConfig):
@@ -20,3 +32,11 @@ class Care_eaushadhiConfig(AppConfig):
 
         # Register authorization handler
         import care_eaushadhi.security.EAushadhiAccess  # noqa F401
+
+        # Validate required settings at runtime only. Build-time commands
+        if len(sys.argv) > 1 and sys.argv[1] in BUILD_TIME_COMMANDS:
+            return
+
+        from care_eaushadhi.settings import plugin_settings
+
+        plugin_settings.validate()
