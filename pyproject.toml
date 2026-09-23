@@ -44,5 +44,11 @@ select = [
     "UP",  # pyupgrade
 ]
 
+[tool.setuptools]
+packages = ["care_eaushadhi"]
+
+[tool.setuptools.package-data]
+care_eaushadhi = ["data/*.csv", "data/*.md"]
+
 [tool.uv]
 package = true
