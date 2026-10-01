@@ -7,6 +7,7 @@ from rest_framework.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from drf_spectacular.utils import extend_schema
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -36,6 +37,7 @@ class ConflictException(APIException):
     default_code = "conflict"
 
 
+@extend_schema(tags=["e-Aushadhi: Record Item Deliveries"])
 class RecordItemDeliveryViewSet(
     EMRCreateMixin,
     EMRUpdateMixin,

@@ -5,6 +5,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 from pydantic import BaseModel, ValidationError as PydanticValidationError
+from drf_spectacular.utils import extend_schema
 
 from care.facility.models.facility import Facility
 from care.security.authorization.base import AuthorizationController
@@ -23,6 +24,7 @@ class InitiateInwardFetchRequestSpec(BaseModel):
     triggered_by: FetchTriggeredBy
     force_refresh: bool = False
 
+@extend_schema(tags=["e-Aushadhi: Initiate Inward Fetch"])
 class InitiateInwardFetchViewSet(GenericViewSet):
     def _authorize_facility(self, facility):
         if not AuthorizationController.call(

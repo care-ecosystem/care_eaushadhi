@@ -2,6 +2,7 @@ from django_filters import rest_framework as filters
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -31,6 +32,7 @@ class InwardRecordFilters(filters.FilterSet):
         fields = ["facility_id", "inward_date", "sync_status"]
 
 
+@extend_schema(tags=["e-Aushadhi: Inward Records"])
 class InwardRecordViewSet(
     EMRListMixin,
     EMRRetrieveMixin,
