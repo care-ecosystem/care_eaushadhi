@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError as RestFrameworkValidationError
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -30,6 +31,7 @@ from care_eaushadhi.models.eaushadhi_product_mapping import EAushadhiProductMapp
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(tags=["e-Aushadhi: Product Mappings"])
 class ProductMappingViewSet(
     EMRCreateMixin,
     EMRListMixin,

@@ -11,6 +11,7 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
 
 from pydantic import ValidationError as PydanticValidationError
+from drf_spectacular.utils import extend_schema
 
 from care.emr.api.viewsets.base import (
     EMRBaseViewSet,
@@ -48,6 +49,7 @@ class InstituteMappingFilters(filters.FilterSet):
         fields = ["facility_id", "eaushadhi_institute_id", "schema_version"]
 
 
+@extend_schema(tags=["e-Aushadhi: Institute Mappings"])
 class InstituteMappingViewSet(
     EMRCreateMixin,
     EMRListMixin,
